@@ -7,6 +7,7 @@
 
 FILE *infile;
 char BUF[BUFSIZ];
+int current_phase = 0;
 
 /* original bomb.c code with fake funcs so that we can get some practice */
 int explode_bomb(){
@@ -28,29 +29,30 @@ int explode_bomb(){
 	puts("KABOOM");
 	return 0;
 	}
-int initialize_bomb(){ /* do nothing */ }
-int phase_defused(){ /* do nothing */ }
+int initialize_bomb(){ printf("Bomb initialized\n"); return 0; }
+int phase_defused(){ current_phase++; printf("Phase %d defused\n", current_phase); return 0; }
 
-int phase_1_asm(char *line){
-	asm("sub    $0x1c,%esp");
-	asm("movl   $0x804a6ac,0x4(%esp)");
-	asm("mov    0x20(%esp),%eax");	
-	asm("mov    %eax,(%esp)");	
-	asm("test   %eax,%eax");	
-	asm("add    $0x1c,%esp");
-	asm("ret");   
-}
+//int phase_1_asm(char *line){
+//	asm("sub    $0x1c,%esp");
+//	asm("movl   $0x804a6ac,0x4(%esp)");
+//	asm("mov    0x20(%esp),%eax");
+//	asm("mov    %eax,(%esp)");
+//	asm("test   %eax,%eax");
+//	asm("add    $0x1c,%esp");
+//	asm("ret");
+//}
 
-int phase_1(char *line){ printf("In phase 1\n");}
-int phase_2(char *line){ printf("In phase 2\n");}
-int phase_3(char *line){ printf("In phase 3\n");}
-int phase_4(char *line){ printf("In phase 4\n");}
-int phase_5(char *line){ printf("In phase 5\n");}
-int phase_6(char *line){ printf("In phase 6\n");}
+int phase_1(char *line){ printf("In phase 1\n"); return 1;}
+int phase_2(char *line){ printf("In phase 2\n"); return 1;}
+int phase_3(char *line){ printf("In phase 3\n"); return 1;}
+int phase_4(char *line){ printf("In phase 4\n"); return 1;}
+int phase_5(char *line){ printf("In phase 5\n"); return 1;}
+int phase_6(char *line){ printf("In phase 6\n"); return 1;}
 char *read_line(){
 	while (fgets(BUF, BUFSIZ-1, infile) != NULL){
 		if (BUF[0]) return BUF;
 	}
+	printf("Enter Line: ");
 	while (gets(BUF) != NULL){
 		if (BUF[0]) return BUF;
 	}
