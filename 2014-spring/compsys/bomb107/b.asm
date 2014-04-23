@@ -521,17 +521,17 @@ Disassembly of section .text:
  8048e2e:	56                   	push   %esi
  8048e2f:	53                   	push   %ebx
  8048e30:	83 ec 24             	sub    $0x24,%esp						# grow stack downward 0x24 bytes for local variables
- 8048e33:	8b 5c 24 30          	mov    0x30(%esp),%ebx
- 8048e37:	65 a1 14 00 00 00    	mov    %gs:0x14,%eax
- 8048e3d:	89 44 24 1c          	mov    %eax,0x1c(%esp)
+ 8048e33:	8b 5c 24 30          	mov    0x30(%esp),%ebx					# %ebx = *input_line
+ 8048e37:	65 a1 14 00 00 00    	mov    %gs:0x14,%eax					# %eax =
+ 8048e3d:	89 44 24 1c          	mov    %eax,0x1c(%esp)					# M [%esp + 0x1C] = %eax
  8048e41:	31 c0                	xor    %eax,%eax
- 8048e43:	89 1c 24             	mov    %ebx,(%esp)
- 8048e46:	e8 84 02 00 00       	call   80490cf <string_length>
+ 8048e43:	89 1c 24             	mov    %ebx,(%esp)						# input_line to %esp
+ 8048e46:	e8 84 02 00 00       	call   80490cf <string_length>			# get string length
  8048e4b:	83 f8 06             	cmp    $0x6,%eax						# string length == 6
  8048e4e:	74 05                	je     8048e55 <phase_5+0x27>			# is so then SKIP "EXPLODE 1"
  8048e50:	e8 85 07 00 00       	call   80495da <explode_bomb>			# "EXPLODE 1" <===============================================
  8048e55:	b8 00 00 00 00       	mov    $0x0,%eax						# %eax = 0
- 8048e5a:	89 c6                	mov    %eax,%esi						# %esi = %eax = 0
+ 8048e5a:	89 c6                	mov    %eax,%esi						# %esi = %eax (LOOP START)
  8048e5c:	0f b6 14 03          	movzbl (%ebx,%eax,1),%edx				# %edx = M [%ebx + %eax]
  8048e60:	0f be ca             	movsbl %dl,%ecx
  8048e63:	83 e9 41             	sub    $0x41,%ecx
