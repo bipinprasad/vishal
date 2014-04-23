@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if make hw1-endian-1; then
+	./hw1-endian-1.exe
+fi
+
+
