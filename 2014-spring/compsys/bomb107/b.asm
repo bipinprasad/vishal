@@ -390,7 +390,7 @@ Disassembly of section .text:
  8048c94:	e8 41 09 00 00       	call   80495da <explode_bomb>
  8048c99:	8d 5c 24 1c          	lea    0x1c(%esp),%ebx			# %ebx = 0x1C + %esp
  8048c9d:	8d 74 24 30          	lea    0x30(%esp),%esi			# %esi = 0x30 + %esp
- 8048ca1:	8b 43 fc             	mov    -0x4(%ebx),%eax			# %eax = -0x4c + %ebx
+ 8048ca1:	8b 43 fc             	mov    -0x4(%ebx),%eax			# %eax = -0x4 + %ebx
  8048ca4:	8d 04 40             	lea    (%eax,%eax,2),%eax		# %eax = 3 * %eax
  8048ca7:	39 03                	cmp    %eax,(%ebx)				# %eax == M [ %ebx ]
  8048ca9:	74 05                	je     8048cb0 <phase_2+0x3c>   # jump past explode
@@ -411,7 +411,7 @@ Disassembly of section .text:
  8048ccc:	89 44 24 08          	mov    %eax,0x8(%esp)			# M [%esp + 0x8] = %eax
  8048cd0:	c7 44 24 04 05 aa 04 	movl   $0x804aa05,0x4(%esp)		# M [%esp + 0x4] = 0x804aa05   # beyond the address in this disassembly
  8048cd7:	08 
- 8048cd8:	8b 44 24 30          	mov    0x30(%esp),%eax			# %eax = M [ %esp + 0x30]
+ 8048cd8:	8b 44 24 30          	mov    0x30(%esp),%eax			# %eax = M [ %esp + 0x30] scanf(input_line, "fmt", &local1 (one int?), &local2 (4 ints?))
  8048cdc:	89 04 24             	mov    %eax,(%esp)				# M [%esp] = %eax
  8048cdf:	e8 6c fc ff ff       	call   8048950 <__isoc99_sscanf@plt>
  8048ce4:	83 f8 01             	cmp    $0x1,%eax				# 0x1 == %eax ; return value from sscanf == 1? sscanf returns number of variables read.
@@ -446,7 +446,7 @@ Disassembly of section .text:
  8048d52:	83 c4 2c             	add    $0x2c,%esp
  8048d55:	c3                   	ret    
 
-08048d56 <func4>:													WHERE IS EXPLODE BOMB ?????
+08048d56 <func4>:													This is just func4 not phase_4 !!!!
  8048d56:	83 ec 1c             	sub    $0x1c,%esp				# grow stack by 0x1C or 28 bytes
  8048d59:	89 5c 24 14          	mov    %ebx,0x14(%esp)			# M [%esp + 0x14] = %ebx
  8048d5d:	89 74 24 18          	mov    %esi,0x18(%esp)			# M [%esp + 0x18] = %esi
@@ -783,8 +783,8 @@ Disassembly of section .text:
  8049160:	56                   	push   %esi
  8049161:	53                   	push   %ebx
  8049162:	83 ec 20             	sub    $0x20,%esp					# grow stack by 0x20 for local variables
- 8049165:	8b 74 24 30          	mov    0x30(%esp),%esi				# %esi = M [%esp + 0x30]	# first param? is local variable phase_1
- 8049169:	8b 5c 24 34          	mov    0x34(%esp),%ebx				# %ebx = M [%esp + 0x34]	# second param? is the input_line
+ 8049165:	8b 74 24 30          	mov    0x30(%esp),%esi				# %esi = M [%esp + 0x30]	# first param? is local input_line
+ 8049169:	8b 5c 24 34          	mov    0x34(%esp),%ebx				# %ebx = M [%esp + 0x34]	# second param? is the  variable phase_1
  804916d:	89 1c 24             	mov    %ebx,(%esp)					# M [%esp] = %ebx			# local var = second param
  8049170:	e8 5a ff ff ff       	call   80490cf <string_length>		# string_length of second param (input_line)
  8049175:	89 c7                	mov    %eax,%edi					# moved to %edi length of input_line
@@ -792,8 +792,8 @@ Disassembly of section .text:
  804917a:	e8 50 ff ff ff       	call   80490cf <string_length>		# string length
  804917f:	ba 01 00 00 00       	mov    $0x1,%edx					# %edx = 0x1
  8049184:	39 c7                	cmp    %eax,%edi					# string length of param 1 compared to string length of second param
- 8049186:	7d 65                	jge    80491ed <strings_check+0x8e>	# exit failure - so input_line should be smaller
- 8049188:	0f b6 03             	movzbl (%ebx),%eax					# %eax = M [%ebx] first character of input_line
+ 8049186:	7d 65                	jge    80491ed <strings_check+0x8e>	# exit failure - so instructor should be smaller
+ 8049188:	0f b6 03             	movzbl (%ebx),%eax					# %eax = M [%ebx] first character of instructor string
  804918b:	84 c0                	test   %al,%al						# byte value not zero of eax's first byte
  804918d:	74 18                	je     80491a7 <strings_check+0x48>	# if zero string 0 length then error
  804918f:	3a 06                	cmp    (%esi),%al					#
@@ -802,24 +802,24 @@ Disassembly of section .text:
  8049195:	83 c3 01             	add    $0x1,%ebx					# loop
  8049198:	3a 06                	cmp    (%esi),%al
  804919a:	75 4c                	jne    80491e8 <strings_check+0x89>
- 804919c:	83 c6 01             	add    $0x1,%esi					# incrementing his pointer
- 804919f:	0f b6 43 01          	movzbl 0x1(%ebx),%eax				# %eax has get our next char
+ 804919c:	83 c6 01             	add    $0x1,%esi					# incrementing our pointer
+ 804919f:	0f b6 43 01          	movzbl 0x1(%ebx),%eax				# %eax has get his next char
  80491a3:	84 c0                	test   %al,%al
- 80491a5:	75 ee                	jne    8049195 <strings_check+0x36> # if reached end of input_string then jump
- 80491a7:	ba 01 00 00 00       	mov    $0x1,%edx					# compare to his internal string does it begin with space, if then fail
+ 80491a5:	75 ee                	jne    8049195 <strings_check+0x36> # if reached end of his then jump
+ 80491a7:	ba 01 00 00 00       	mov    $0x1,%edx					# compare to our string does it begin with space, if then fail
  80491ac:	80 3e 20             	cmpb   $0x20,(%esi)
- 80491af:	75 3c                	jne    80491ed <strings_check+0x8e>	# if his string not space then fail
- 80491b1:	80 7e 01 00          	cmpb   $0x0,0x1(%esi)				# did we end of our cannot match the last space of his string
+ 80491af:	75 3c                	jne    80491ed <strings_check+0x8e>	# if our string not space then fail  <===================
+ 80491b1:	80 7e 01 00          	cmpb   $0x0,0x1(%esi)				# did we end of our cannot match the last space of our string
  80491b5:	74 36                	je     80491ed <strings_check+0x8e>
  80491b7:	8d 44 24 1c          	lea    0x1c(%esp),%eax				# moving some local integer into eax
  80491bb:	89 44 24 08          	mov    %eax,0x8(%esp)				# moves into another local variable
  80491bf:	c7 44 24 04 08 aa 04 	movl   $0x804aa08,0x4(%esp)			# moves an address (beyong this listing) into local variable
  80491c6:	08 
  80491c7:	83 c6 01             	add    $0x1,%esi					# pointing the next non-zero char
- 80491ca:	89 34 24             	mov    %esi,(%esp)					# local vaeiable now contains will constain 1
+ 80491ca:	89 34 24             	mov    %esi,(%esp)					# local variable now contains will contain 1
  80491cd:	e8 7e f7 ff ff       	call   8048950 <__isoc99_sscanf@plt>
  80491d2:	ba 01 00 00 00       	mov    $0x1,%edx
- 80491d7:	83 f8 01             	cmp    $0x1,%eax					# did sscanf return 1, emaning read read one variable
+ 80491d7:	83 f8 01             	cmp    $0x1,%eax					# did sscanf return 1, remaning read read one variable
  80491da:	75 11                	jne    80491ed <strings_check+0x8e> # fail if scanf did not return 1
  80491dc:	3b 7c 24 1c          	cmp    0x1c(%esp),%edi				# length of input string to some local variable
  80491e0:	0f 95 c2             	setne  %dl							# input_line length has to match his internal local length
@@ -1195,22 +1195,22 @@ Disassembly of section .text:
 
 0804971b <read_six_numbers>:
  804971b:	83 ec 2c             	sub    $0x2c,%esp					# grow stack pointer for local variables
- 804971e:	8b 44 24 34          	mov    0x34(%esp),%eax				#
- 8049722:	8d 50 14             	lea    0x14(%eax),%edx
- 8049725:	89 54 24 1c          	mov    %edx,0x1c(%esp)
- 8049729:	8d 50 10             	lea    0x10(%eax),%edx
- 804972c:	89 54 24 18          	mov    %edx,0x18(%esp)
- 8049730:	8d 50 0c             	lea    0xc(%eax),%edx
- 8049733:	89 54 24 14          	mov    %edx,0x14(%esp)
- 8049737:	8d 50 08             	lea    0x8(%eax),%edx
- 804973a:	89 54 24 10          	mov    %edx,0x10(%esp)
+ 804971e:	8b 44 24 34          	mov    0x34(%esp),%eax				# 34-2c = 8
+ 8049722:	8d 50 14             	lea    0x14(%eax),%edx				# ptr to 6th integer
+ 8049725:	89 54 24 1c          	mov    %edx,0x1c(%esp)				# first is 6th arg
+ 8049729:	8d 50 10             	lea    0x10(%eax),%edx				# ptr to 5th integer
+ 804972c:	89 54 24 18          	mov    %edx,0x18(%esp)				# x-1 arg, fifth scanf param
+ 8049730:	8d 50 0c             	lea    0xc(%eax),%edx				# 4th ptr
+ 8049733:	89 54 24 14          	mov    %edx,0x14(%esp)				# x-2 arg, 4th scanf param
+ 8049737:	8d 50 08             	lea    0x8(%eax),%edx				# offset 2 down x
+ 804973a:	89 54 24 10          	mov    %edx,0x10(%esp)				# third sscanf param
  804973e:	8d 50 04             	lea    0x4(%eax),%edx
- 8049741:	89 54 24 0c          	mov    %edx,0xc(%esp)
- 8049745:	89 44 24 08          	mov    %eax,0x8(%esp)
- 8049749:	c7 44 24 04 f9 a9 04 	movl   $0x804a9f9,0x4(%esp)
+ 8049741:	89 54 24 0c          	mov    %edx,0xc(%esp)				# second scanf param
+ 8049745:	89 44 24 08          	mov    %eax,0x8(%esp)				# first scanf param
+ 8049749:	c7 44 24 04 f9 a9 04 	movl   $0x804a9f9,0x4(%esp)			# format
  8049750:	08 
  8049751:	8b 44 24 30          	mov    0x30(%esp),%eax
- 8049755:	89 04 24             	mov    %eax,(%esp)
+ 8049755:	89 04 24             	mov    %eax,(%esp)					# input line
  8049758:	e8 f3 f1 ff ff       	call   8048950 <__isoc99_sscanf@plt>
  804975d:	83 f8 05             	cmp    $0x5,%eax						# read more than 5 numbers and succeed??
  8049760:	7f 05                	jg     8049767 <read_six_numbers+0x4c> # success

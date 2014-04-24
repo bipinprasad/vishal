@@ -6,11 +6,8 @@ b phase_4
 b phase_5
 b phase_6
 b explode_bomb
-start t
-info all-registers
+b strings_check
+r sol.txt
 info args
 display $esp
 display $eax
-info frame
-
-

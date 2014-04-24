@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 FILE *infile;
 char BUF[BUFSIZ];
@@ -27,8 +28,9 @@ int explode_bomb(){
 	puts("Sorry too bad");
 	printf("Here is the bomb email to prof - not really\n");
 	puts("KABOOM");
-	return 0;
-	}
+	exit(-1);
+}
+
 int initialize_bomb(){ printf("Bomb initialized\n"); return 0; }
 int phase_defused(){ current_phase++; printf("Phase %d defused\n", current_phase); return 0; }
 
@@ -42,7 +44,46 @@ int phase_defused(){ current_phase++; printf("Phase %d defused\n", current_phase
 //	asm("ret");
 //}
 
-int phase_1(char *line){ printf("In phase 1\n"); return 1;}
+int strings_check(char *str1, char *str2){
+	int scan_cnt;
+	char tmp1[BUFSIZ], tmp2[BUFSIZ];
+
+	if (!str2[0])
+		explode_bomb();
+	if (strlen(str2) >= strlen(str1)){
+		explode_bomb();
+	}
+
+	for (; *str2; str1++,str2++){
+		if (str1[0] != str2[0]){
+			printf("Error: mismatch is at str1=\"%s\", with str2=\"%s\"\n", str1, str2);
+			explode_bomb();
+		}
+	}
+
+	if (str1[0] != ' '){
+		printf("Error: str1 is at \"%s\", expecting to start with a space\n", str1);
+		explode_bomb();
+	}
+	printf("Ok: str1 is at \"%s\"\n", str1);
+
+	str1++;
+	tmp1[0] = tmp2[0] = '\0';
+	scan_cnt = sscanf(str1, "%s %s", tmp1, tmp2 );
+	if ( scan_cnt != 1){
+		printf("Error: scanned str1 is at %s\n", tmp1, tmp2);
+		explode_bomb();
+	}
+	return 0;
+}
+
+int phase_1(char *line){
+	char *s = "This is the string that should be compared against";
+	printf("In phase 1\n");
+	strings_check(s, line);
+	return 0;
+}
+
 int phase_2(char *line){ printf("In phase 2\n"); return 1;}
 int phase_3(char *line){ printf("In phase 3\n"); return 1;}
 int phase_4(char *line){ printf("In phase 4\n"); return 1;}
@@ -74,10 +115,11 @@ int main(int argc, char *argv[])
      * defuse each phase, you can add its defusing string to <file> and
      * avoid having to retype it. */
     else if (argc == 2) {
-	if (!(infile = fopen(argv[1], "r"))) {
-	    printf("%s: Error: Couldn't open %s\n", argv[0], argv[1]);
-	    exit(8);
-	}
+		if (!(infile = fopen(argv[1], "r"))) {
+			printf("%s: Error: Couldn't open %s\n", argv[0], argv[1]);
+			exit(8);
+		}
+		printf("Reading from file %s\n", argv[1]);
     }
 
     /* You can't call the bomb with more than 1 command line argument. */
