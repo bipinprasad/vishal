@@ -450,17 +450,17 @@ Disassembly of section .text:
  8048d56:	83 ec 1c             	sub    $0x1c,%esp				# grow stack by 0x1C or 28 bytes
  8048d59:	89 5c 24 14          	mov    %ebx,0x14(%esp)			# M [%esp + 0x14] = %ebx
  8048d5d:	89 74 24 18          	mov    %esi,0x18(%esp)			# M [%esp + 0x18] = %esi
- 8048d61:	8b 44 24 20          	mov    0x20(%esp),%eax			# %eax = M [%esp + 0x20]  - input_line char at idx 0x20
- 8048d65:	8b 54 24 24          	mov    0x24(%esp),%edx			# %edx = M [%esp + 0x24]  - input_line char at idx 0x24
- 8048d69:	8b 74 24 28          	mov    0x28(%esp),%esi			# %esi = M [%esp + 0x28]  - input_line char at idx 0x28
- 8048d6d:	89 f1                	mov    %esi,%ecx				# %ecx = %esi
- 8048d6f:	29 d1                	sub    %edx,%ecx				# %ecx -= %edx
- 8048d71:	89 cb                	mov    %ecx,%ebx				# %ebx = %ecx
- 8048d73:	c1 eb 1f             	shr    $0x1f,%ebx				# %ebx >>= 0x1F
- 8048d76:	01 d9                	add    %ebx,%ecx				# %ecx += %ebx
- 8048d78:	d1 f9                	sar    %ecx
- 8048d7a:	8d 1c 11             	lea    (%ecx,%edx,1),%ebx
- 8048d7d:	39 c3                	cmp    %eax,%ebx
+ 8048d61:	8b 44 24 20          	mov    0x20(%esp),%eax			# %eax = first param
+ 8048d65:	8b 54 24 24          	mov    0x24(%esp),%edx			# %edx = second param
+ 8048d69:	8b 74 24 28          	mov    0x28(%esp),%esi			# %esi = M [%esp + 0x28]  - third param
+ 8048d6d:	89 f1                	mov    %esi,%ecx				# %ecx = %esi (p3)
+ 8048d6f:	29 d1                	sub    %edx,%ecx				# %ecx -= %edx (p3-p2)
+ 8048d71:	89 cb                	mov    %ecx,%ebx				# %ebx = %ecx  (p3-p2)
+ 8048d73:	c1 eb 1f             	shr    $0x1f,%ebx				# %ebx >>= 0x1F (p3-p2) >> 31
+ 8048d76:	01 d9                	add    %ebx,%ecx				# %ecx += %ebx (p3-p2) + ((p3-p2) >> 31) since p2=0 and p3=14, this is just p3-p2 = 14-0=14
+ 8048d78:	d1 f9                	sar    %ecx						# 14>>1 = 7
+ 8048d7a:	8d 1c 11             	lea    (%ecx,%edx,1),%ebx		# %ebx = %ecx + %edx (or ebx = 7 + 0) = 7
+ 8048d7d:	39 c3                	cmp    %eax,%ebx				# if p1 == 7
  8048d7f:	7e 17                	jle    8048d98 <func4+0x42>
  8048d81:	8d 4b ff             	lea    -0x1(%ebx),%ecx
  8048d84:	89 4c 24 08          	mov    %ecx,0x8(%esp)
@@ -475,7 +475,7 @@ Disassembly of section .text:
  8048da0:	8d 53 01             	lea    0x1(%ebx),%edx
  8048da3:	89 54 24 04          	mov    %edx,0x4(%esp)
  8048da7:	89 04 24             	mov    %eax,(%esp)
- 8048daa:	e8 a7 ff ff ff       	call   8048d56 <func4>
+ 8048daa:	e8 a7 ff ff ff       	call   8048d56 <func4>			# recursive call
  8048daf:	01 c3                	add    %eax,%ebx
  8048db1:	89 d8                	mov    %ebx,%eax
  8048db3:	8b 5c 24 14          	mov    0x14(%esp),%ebx
@@ -485,30 +485,30 @@ Disassembly of section .text:
 
 08048dbf <phase_4>:
  8048dbf:	83 ec 2c             	sub    $0x2c,%esp						# grow stack 0x2c for local variables
- 8048dc2:	8d 44 24 1c          	lea    0x1c(%esp),%eax					# %eax =
- 8048dc6:	89 44 24 0c          	mov    %eax,0xc(%esp)
+ 8048dc2:	8d 44 24 1c          	lea    0x1c(%esp),%eax					# %eax = prepare for the sscanf call below
+ 8048dc6:	89 44 24 0c          	mov    %eax,0xc(%esp)					# sscancf fourth param (ptr to an int?)
  8048dca:	8d 44 24 18          	lea    0x18(%esp),%eax
- 8048dce:	89 44 24 08          	mov    %eax,0x8(%esp)
- 8048dd2:	c7 44 24 04 05 aa 04 	movl   $0x804aa05,0x4(%esp)
+ 8048dce:	89 44 24 08          	mov    %eax,0x8(%esp)					# scanf third param - ptr to an int?
+ 8048dd2:	c7 44 24 04 05 aa 04 	movl   $0x804aa05,0x4(%esp)				# sscanf second param = format-str
  8048dd9:	08 
- 8048dda:	8b 44 24 30          	mov    0x30(%esp),%eax					%eax = first param
+ 8048dda:	8b 44 24 30          	mov    0x30(%esp),%eax					# %eax = sscanf first param (input str)
  8048dde:	89 04 24             	mov    %eax,(%esp)
  8048de1:	e8 6a fb ff ff       	call   8048950 <__isoc99_sscanf@plt>	# scan string
- 8048de6:	83 f8 02             	cmp    $0x2,%eax						# two words scanned
+ 8048de6:	83 f8 02             	cmp    $0x2,%eax						# two words scanned by sscanf
  8048de9:	75 0d                	jne    8048df8 <phase_4+0x39>			# goto "EXPLODE 1" <==========================================
  8048deb:	8b 44 24 18          	mov    0x18(%esp),%eax
- 8048def:	85 c0                	test   %eax,%eax
+ 8048def:	85 c0                	test   %eax,%eax						#
  8048df1:	78 05                	js     8048df8 <phase_4+0x39>
- 8048df3:	83 f8 0e             	cmp    $0xe,%eax
+ 8048df3:	83 f8 0e             	cmp    $0xe,%eax						# first int = 0xe or 14
  8048df6:	7e 05                	jle    8048dfd <phase_4+0x3e>
  8048df8:	e8 dd 07 00 00       	call   80495da <explode_bomb>			# "EXPLODE 1" <===============================================
- 8048dfd:	c7 44 24 08 0e 00 00 	movl   $0xe,0x8(%esp)
+ 8048dfd:	c7 44 24 08 0e 00 00 	movl   $0xe,0x8(%esp)					# prepare for func4 call - third param to func4 - oxe or 14)
  8048e04:	00 
- 8048e05:	c7 44 24 04 00 00 00 	movl   $0x0,0x4(%esp)
+ 8048e05:	c7 44 24 04 00 00 00 	movl   $0x0,0x4(%esp)					# second param to func4
  8048e0c:	00 
- 8048e0d:	8b 44 24 18          	mov    0x18(%esp),%eax
- 8048e11:	89 04 24             	mov    %eax,(%esp)
- 8048e14:	e8 3d ff ff ff       	call   8048d56 <func4>					# func4(0,4,
+ 8048e0d:	8b 44 24 18          	mov    0x18(%esp),%eax					# ptr to second int scanned by scanf
+ 8048e11:	89 04 24             	mov    %eax,(%esp)						# first param to func4
+ 8048e14:	e8 3d ff ff ff       	call   8048d56 <func4>					# func4(scannedint2,0,14)
  8048e19:	83 f8 23             	cmp    $0x23,%eax						# %eax == 0x23 or 'C'
  8048e1c:	75 07                	jne    8048e25 <phase_4+0x66>			# goto "EXPLODE 2" <==========================================
  8048e1e:	83 7c 24 1c 23       	cmpl   $0x23,0x1c(%esp)					# M[%esp+0x1C] == 0x23 or 'C'
