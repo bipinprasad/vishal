@@ -450,18 +450,18 @@ Disassembly of section .text:
  8048d56:	83 ec 1c             	sub    $0x1c,%esp				# grow stack by 0x1C or 28 bytes
  8048d59:	89 5c 24 14          	mov    %ebx,0x14(%esp)			# M [%esp + 0x14] = %ebx
  8048d5d:	89 74 24 18          	mov    %esi,0x18(%esp)			# M [%esp + 0x18] = %esi
- 8048d61:	8b 44 24 20          	mov    0x20(%esp),%eax			# %eax = first param
- 8048d65:	8b 54 24 24          	mov    0x24(%esp),%edx			# %edx = second param
- 8048d69:	8b 74 24 28          	mov    0x28(%esp),%esi			# %esi = M [%esp + 0x28]  - third param
- 8048d6d:	89 f1                	mov    %esi,%ecx				# %ecx = %esi (p3)
+ 8048d61:	8b 44 24 20          	mov    0x20(%esp),%eax			# %eax = first param					(scanned-int-1)
+ 8048d65:	8b 54 24 24          	mov    0x24(%esp),%edx			# %edx = second param					(0)
+ 8048d69:	8b 74 24 28          	mov    0x28(%esp),%esi			# %esi = M [%esp + 0x28]  - third param (14)
+ 8048d6d:	89 f1                	mov    %esi,%ecx				# %ecx = %esi (p3)  14
  8048d6f:	29 d1                	sub    %edx,%ecx				# %ecx -= %edx (p3-p2)
  8048d71:	89 cb                	mov    %ecx,%ebx				# %ebx = %ecx  (p3-p2)
- 8048d73:	c1 eb 1f             	shr    $0x1f,%ebx				# %ebx >>= 0x1F (p3-p2) >> 31
+ 8048d73:	c1 eb 1f             	shr    $0x1f,%ebx				# %ebx >>= 0x1F (p3-p2) >> 31 (0 if positive, 1 if negative)
  8048d76:	01 d9                	add    %ebx,%ecx				# %ecx += %ebx (p3-p2) + ((p3-p2) >> 31) since p2=0 and p3=14, this is just p3-p2 = 14-0=14
  8048d78:	d1 f9                	sar    %ecx						# 14>>1 = 7
  8048d7a:	8d 1c 11             	lea    (%ecx,%edx,1),%ebx		# %ebx = %ecx + %edx (or ebx = 7 + 0) = 7
- 8048d7d:	39 c3                	cmp    %eax,%ebx				# if p1 == 7
- 8048d7f:	7e 17                	jle    8048d98 <func4+0x42>
+ 8048d7d:	39 c3                	cmp    %eax,%ebx				# if p1 >= 7
+ 8048d7f:	7e 17                	jle    8048d98 <func4+0x42>		# jump to  =====> A
  8048d81:	8d 4b ff             	lea    -0x1(%ebx),%ecx
  8048d84:	89 4c 24 08          	mov    %ecx,0x8(%esp)
  8048d88:	89 54 24 04          	mov    %edx,0x4(%esp)
@@ -469,7 +469,7 @@ Disassembly of section .text:
  8048d8f:	e8 c2 ff ff ff       	call   8048d56 <func4>
  8048d94:	01 c3                	add    %eax,%ebx
  8048d96:	eb 19                	jmp    8048db1 <func4+0x5b>
- 8048d98:	39 c3                	cmp    %eax,%ebx
+ 8048d98:	39 c3                	cmp    %eax,%ebx				# jump here from A <====
  8048d9a:	7d 15                	jge    8048db1 <func4+0x5b>
  8048d9c:	89 74 24 08          	mov    %esi,0x8(%esp)
  8048da0:	8d 53 01             	lea    0x1(%ebx),%edx
@@ -498,8 +498,8 @@ Disassembly of section .text:
  8048de9:	75 0d                	jne    8048df8 <phase_4+0x39>			# goto "EXPLODE 1" <==========================================
  8048deb:	8b 44 24 18          	mov    0x18(%esp),%eax
  8048def:	85 c0                	test   %eax,%eax						#
- 8048df1:	78 05                	js     8048df8 <phase_4+0x39>
- 8048df3:	83 f8 0e             	cmp    $0xe,%eax						# first int = 0xe or 14
+ 8048df1:	78 05                	js     8048df8 <phase_4+0x39>			# jump if signed number EXPLODE
+ 8048df3:	83 f8 0e             	cmp    $0xe,%eax						# first int = 0xe or 14 (or lower)
  8048df6:	7e 05                	jle    8048dfd <phase_4+0x3e>
  8048df8:	e8 dd 07 00 00       	call   80495da <explode_bomb>			# "EXPLODE 1" <===============================================
  8048dfd:	c7 44 24 08 0e 00 00 	movl   $0xe,0x8(%esp)					# prepare for func4 call - third param to func4 - oxe or 14)
@@ -508,10 +508,10 @@ Disassembly of section .text:
  8048e0c:	00 
  8048e0d:	8b 44 24 18          	mov    0x18(%esp),%eax					# ptr to second int scanned by scanf
  8048e11:	89 04 24             	mov    %eax,(%esp)						# first param to func4
- 8048e14:	e8 3d ff ff ff       	call   8048d56 <func4>					# func4(scannedint2,0,14)
- 8048e19:	83 f8 23             	cmp    $0x23,%eax						# %eax == 0x23 or 'C'
+ 8048e14:	e8 3d ff ff ff       	call   8048d56 <func4>					# func4(scannedint1,0,14)
+ 8048e19:	83 f8 23             	cmp    $0x23,%eax						# %eax == 0x23 or 35
  8048e1c:	75 07                	jne    8048e25 <phase_4+0x66>			# goto "EXPLODE 2" <==========================================
- 8048e1e:	83 7c 24 1c 23       	cmpl   $0x23,0x1c(%esp)					# M[%esp+0x1C] == 0x23 or 'C'
+ 8048e1e:	83 7c 24 1c 23       	cmpl   $0x23,0x1c(%esp)					# M[%esp+0x1C] == 0x23 or 35
  8048e23:	74 05                	je     8048e2a <phase_4+0x6b>			# "SUCCESS"
  8048e25:	e8 b0 07 00 00       	call   80495da <explode_bomb>			# "EXPLODE 2" <===============================================
  8048e2a:	83 c4 2c             	add    $0x2c,%esp
@@ -524,7 +524,7 @@ Disassembly of section .text:
  8048e33:	8b 5c 24 30          	mov    0x30(%esp),%ebx					# %ebx = *input_line
  8048e37:	65 a1 14 00 00 00    	mov    %gs:0x14,%eax					# %eax =
  8048e3d:	89 44 24 1c          	mov    %eax,0x1c(%esp)					# M [%esp + 0x1C] = %eax
- 8048e41:	31 c0                	xor    %eax,%eax
+ 8048e41:	31 c0                	xor    %eax,%eax						# eax set 0
  8048e43:	89 1c 24             	mov    %ebx,(%esp)						# input_line to %esp
  8048e46:	e8 84 02 00 00       	call   80490cf <string_length>			# get string length
  8048e4b:	83 f8 06             	cmp    $0x6,%eax						# string length == 6
@@ -534,23 +534,23 @@ Disassembly of section .text:
  8048e5a:	89 c6                	mov    %eax,%esi						# %esi = %eax (LOOP START)
  8048e5c:	0f b6 14 03          	movzbl (%ebx,%eax,1),%edx				# %edx = M [%ebx + %eax]
  8048e60:	0f be ca             	movsbl %dl,%ecx
- 8048e63:	83 e9 41             	sub    $0x41,%ecx
+ 8048e63:	83 e9 41             	sub    $0x41,%ecx						subtract 'A' from %ecx
  8048e66:	80 fa 60             	cmp    $0x60,%dl
- 8048e69:	7e 06                	jle    8048e71 <phase_5+0x43>
+ 8048e69:	7e 06                	jle    8048e71 <phase_5+0x43>			dl <= `
  8048e6b:	0f be d2             	movsbl %dl,%edx
- 8048e6e:	8d 4a 9f             	lea    -0x61(%edx),%ecx
+ 8048e6e:	8d 4a 9f             	lea    -0x61(%edx),%ecx					make it lower putting %ecx offset from 'A'
  8048e71:	83 e1 0f             	and    $0xf,%ecx
- 8048e74:	0f b6 91 2d a9 04 08 	movzbl 0x804a92d(%ecx),%edx
- 8048e7b:	88 54 34 15          	mov    %dl,0x15(%esp,%esi,1)
+ 8048e74:	0f b6 91 2d a9 04 08 	movzbl 0x804a92d(%ecx),%edx				moving secret location using alpha index into edx = "l rtmon s i h d e c a wuf"
+ 8048e7b:	88 54 34 15          	mov    %dl,0x15(%esp,%esi,1)			byte into esp+esi+0x15                               A BCDEF G H I J K L M NOP
  8048e7f:	83 c0 01             	add    $0x1,%eax
  8048e82:	83 f8 06             	cmp    $0x6,%eax
  8048e85:	75 d3                	jne    8048e5a <phase_5+0x2c>
  8048e87:	c6 44 24 1b 00       	movb   $0x0,0x1b(%esp)
- 8048e8c:	c7 44 24 04 17 a7 04 	movl   $0x804a717,0x4(%esp)
+ 8048e8c:	c7 44 24 04 17 a7 04 	movl   $0x804a717,0x4(%esp)				# One string "whales" therefore string needed to get this translation is = NIMAKG
  8048e93:	08 
  8048e94:	8d 44 24 15          	lea    0x15(%esp),%eax
- 8048e98:	89 04 24             	mov    %eax,(%esp)
- 8048e9b:	e8 48 02 00 00       	call   80490e8 <strings_not_equal>
+ 8048e98:	89 04 24             	mov    %eax,(%esp)						# other string
+ 8048e9b:	e8 48 02 00 00       	call   80490e8 <strings_not_equal>		#
  8048ea0:	85 c0                	test   %eax,%eax						# %eax is not zero (unequal strings?)
  8048ea2:	74 05                	je     8048ea9 <phase_5+0x7b>			# is so then SKIP "EXPLODE 2"
  8048ea4:	e8 31 07 00 00       	call   80495da <explode_bomb>			# "EXPLODE 2" <===============================================
@@ -569,14 +569,14 @@ Disassembly of section .text:
  8048ec3:	83 ec 44             	sub    $0x44,%esp						# grow stack by 0x44 for local variables
  8048ec6:	8d 44 24 10          	lea    0x10(%esp),%eax					#
  8048eca:	89 44 24 04          	mov    %eax,0x4(%esp)
- 8048ece:	8b 44 24 50          	mov    0x50(%esp),%eax
+ 8048ece:	8b 44 24 50          	mov    0x50(%esp),%eax					# input string
  8048ed2:	89 04 24             	mov    %eax,(%esp)
  8048ed5:	e8 41 08 00 00       	call   804971b <read_six_numbers>		# read six numbers
  8048eda:	be 00 00 00 00       	mov    $0x0,%esi						# %esi = 0 ; looks like a loop variable
  8048edf:	8b 44 b4 10          	mov    0x10(%esp,%esi,4),%eax			# %eax = M [0x10 + %esp + %esi*4]
  8048ee3:	83 e8 01             	sub    $0x1,%eax						# %eax -= 1
  8048ee6:	83 f8 05             	cmp    $0x5,%eax						# %eax == 5
- 8048ee9:	76 05                	jbe    8048ef0 <phase_6+0x2f>			# skip "explode 1" (i.e. explode is not exactly 6 numbers)
+ 8048ee9:	76 05                	jbe    8048ef0 <phase_6+0x2f>			# skip "explode 1" (i.e. explode if not exactly 6 numbers)
  8048eeb:	e8 ea 06 00 00       	call   80495da <explode_bomb>			# "EXPLODE 1" <===============================================
  8048ef0:	83 c6 01             	add    $0x1,%esi						# %esi += 1
  8048ef3:	83 fe 06             	cmp    $0x6,%esi						# %esi == 6
@@ -588,32 +588,32 @@ Disassembly of section .text:
  8048f04:	e8 d1 06 00 00       	call   80495da <explode_bomb>			# "EXPLODE 2" <===============================================
  8048f09:	83 c3 01             	add    $0x1,%ebx						# increment %ebx
  8048f0c:	83 fb 05             	cmp    $0x5,%ebx						# compare to 5
- 8048f0f:	7e e9                	jle    8048efa <phase_6+0x39>			# back (loop?) MAYBE THIS CHECKS IF ALL NUMBERS ARR UNIQUE
- 8048f11:	eb cc                	jmp    8048edf <phase_6+0x1e>
- 8048f13:	8b 52 08             	mov    0x8(%edx),%edx
+ 8048f0f:	7e e9                	jle    8048efa <phase_6+0x39>			# back (loop?) MAYBE THIS CHECKS IF ALL NUMBERS ARE UNIQUE
+ 8048f11:	eb cc                	jmp    8048edf <phase_6+0x1e>           <===================================================================
+ 8048f13:	8b 52 08             	mov    0x8(%edx),%edx				come here from 608, also from 597
  8048f16:	83 c0 01             	add    $0x1,%eax
  8048f19:	39 c8                	cmp    %ecx,%eax
  8048f1b:	75 f6                	jne    8048f13 <phase_6+0x52>
- 8048f1d:	89 54 b4 28          	mov    %edx,0x28(%esp,%esi,4)
+ 8048f1d:	89 54 b4 28          	mov    %edx,0x28(%esp,%esi,4)		come here from 608
  8048f21:	83 c3 01             	add    $0x1,%ebx
  8048f24:	83 fb 06             	cmp    $0x6,%ebx
  8048f27:	75 07                	jne    8048f30 <phase_6+0x6f>
  8048f29:	eb 1c                	jmp    8048f47 <phase_6+0x86>
- 8048f2b:	bb 00 00 00 00       	mov    $0x0,%ebx						# END OF LOOP ?
- 8048f30:	89 de                	mov    %ebx,%esi
+ 8048f2b:	bb 00 00 00 00       	mov    $0x0,%ebx						# END OF LOOP ? NO duplicates 1 thru 6 <===========================
+ 8048f30:	89 de                	mov    %ebx,%esi						ebx = esi = 0
  8048f32:	8b 4c 9c 10          	mov    0x10(%esp,%ebx,4),%ecx
- 8048f36:	b8 01 00 00 00       	mov    $0x1,%eax
- 8048f3b:	ba 74 d1 04 08       	mov    $0x804d174,%edx
- 8048f40:	83 f9 01             	cmp    $0x1,%ecx
- 8048f43:	7f ce                	jg     8048f13 <phase_6+0x52>
+ 8048f36:	b8 01 00 00 00       	mov    $0x1,%eax						eax = 1
+ 8048f3b:	ba 74 d1 04 08       	mov    $0x804d174,%edx					MYSTERY VALLUE INTO EDX  <=====================
+ 8048f40:	83 f9 01             	cmp    $0x1,%ecx						input number compare with 1
+ 8048f43:	7f ce                	jg     8048f13 <phase_6+0x52>			ecx > 1
  8048f45:	eb d6                	jmp    8048f1d <phase_6+0x5c>
  8048f47:	8b 5c 24 28          	mov    0x28(%esp),%ebx
  8048f4b:	8b 44 24 2c          	mov    0x2c(%esp),%eax
- 8048f4f:	89 43 08             	mov    %eax,0x8(%ebx)
+ 8048f4f:	89 43 08             	mov    %eax,0x8(%ebx)					M[ebx+8] = M[esp+2c], from 611, M[ M[esp+28] + 2c] = M[esp+2c]
  8048f52:	8b 54 24 30          	mov    0x30(%esp),%edx
- 8048f56:	89 50 08             	mov    %edx,0x8(%eax)
+ 8048f56:	89 50 08             	mov    %edx,0x8(%eax)					M[eax+8] = M[esp+30]
  8048f59:	8b 44 24 34          	mov    0x34(%esp),%eax
- 8048f5d:	89 42 08             	mov    %eax,0x8(%edx)
+ 8048f5d:	89 42 08             	mov    %eax,0x8(%edx)					M[edx+8] = M[esp+34]
  8048f60:	8b 54 24 38          	mov    0x38(%esp),%edx
  8048f64:	89 50 08             	mov    %edx,0x8(%eax)
  8048f67:	8b 44 24 3c          	mov    0x3c(%esp),%eax
@@ -632,7 +632,6 @@ Disassembly of section .text:
  8048f93:	5b                   	pop    %ebx
  8048f94:	5e                   	pop    %esi
  8048f95:	c3                   	ret    
-
 08048f96 <fun7>:
  8048f96:	53                   	push   %ebx
  8048f97:	83 ec 18             	sub    $0x18,%esp
@@ -2139,3 +2138,14 @@ Disassembly of section .fini:
  804a531:	83 c4 08             	add    $0x8,%esp
  804a534:	5b                   	pop    %ebx
  804a535:	c3                   	ret    
+
+
+
+(gdb) x/48 0x804d174
+0x804d174 <node1>:      0x5a    0x0a    0x00    0x00    0x01    0x00    0x00    0x00
+0x804d17c <node1+8>:    0xa4    0xd1    0x04    0x08    0xec    0x01    0x00    0x00
+0x804d184 <node2+4>:    0x02    0x00    0x00    0x00    0x98    0xd1    0x04    0x08
+0x804d18c <node3>:      0x89    0x0b    0x00    0x00    0x03    0x00    0x00    0x00
+0x804d194 <node3+8>:    0x00    0x00    0x00    0x00    0x0c    0x0f    0x00    0x00
+0x804d19c <node4+4>:    0x04    0x00    0x00    0x00    0x74    0xd1    0x04    0x08
+
