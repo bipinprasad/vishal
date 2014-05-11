@@ -19,7 +19,7 @@
 #define DEFAULT_SET_BITS    10
 #define DEFAULT_CACHE_LINES 2
 #define DEFAULT_BLOCK_BITS  8
-#define CACHE_BYTES_PER_LINE (B+3*sizeof(int))
+#define CACHE_BYTES_PER_LINE(B) (B+3*sizeof(int))
 
 
 /*
@@ -107,16 +107,16 @@ void parseOptions(int argc, char *argv[], int *sp, int *Ep, int *bp, char *trace
     }
 }
 
-int getTag (unsigned int address, int s, int b){
-  int tag = address >>> (s+b);
-  return tag;
+unsigned int getTag (unsigned int address, int s, int b){
+	int tag 	= address >> (s+b);
+	return tag;
 }
 
-int getSet (unsigned int address, int s, int b){
+unsigned int getSet (unsigned int address, int s, int b){
     //s_no * L * (B/4 + 1)
-	int leftm = sizeof(int) -s - b;
-	int set <<= leftm;
-    set >>>= (leftm+b);
+	int leftm = sizeof(int) - s - b;
+	unsigned int  set = address << leftm;
+    set >>= (leftm+b);
     return set;
 }
 
@@ -125,7 +125,7 @@ int getValid (unsigned int address){
 }
 
 int getSetStart(int s_no, int L, int B){
-	return s_no * L * CACHE_BYTES_PER_LINE / 4;
+	return s_no * L * CACHE_BYTES_PER_LINE(B) / 4;
 }
 void simulate(int *cache, int action, unsigned int address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions, int s, int E, int b){
 	/**
@@ -158,10 +158,10 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 
         //What happens when Direct Mapped? Do we need to account for different tagging scheme?
 
-
+	int B  = 1 << b
 	int tag = getTag(address, s, b);
 	int set = getSet(address, s, b);
-	int offset = set * E * CACHE_BYTES_PER_LINE;
+	int offset = set * E * CACHE_BYTES_PER_LINE(B);
 	int isValid = cache[offset]
 	int flagInt = cache[offset+1];
 	int lru     = cache[offset+2];
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 	parseOptions(argc, argv, &s, &E, &b, traceFile, &verbose);
 	S = 0x01 << s;
 	B = 0x01 << b;
-	cache = (int *)malloc(S * E * CACHE_BYTES_PER_LINE);
+	cache = (int *)malloc(S * E * CACHE_BYTES_PER_LINE(B));
 
 	if ((fp = fopen(traceFile, "r")) == NULL){
 		perror ("Error opening trace-file");
