@@ -162,11 +162,27 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 	int tag = getTag(address, s, b);
 	int set = getSet(address, s, b);
 	int offset = set * E * CACHE_BYTES_PER_LINE(B);
-	int isValid = cache[offset]
-	int flagInt = cache[offset+1];
-	int lru     = cache[offset+2];
+	int isValid  = cache[offset]
+	int cacheTag = cache[offset+1];
+	int lru      = cache[offset+2];
 
-	if (isValid){}
+
+	Fix this code to work properly.
+
+	if (isValid){
+		if (tag == cacheTag){
+			*pHits += 1;
+			set the lru
+			return;
+		} else {
+			find which line to evict based lru
+			....
+			...
+
+		}
+	} else {
+		cache[offset] =
+	}
 
 	//if tag or set not in the cache:
 	   //if getValid(address) = 0;
