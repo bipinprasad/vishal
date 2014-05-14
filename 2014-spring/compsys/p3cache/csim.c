@@ -19,6 +19,8 @@
 #define DEFAULT_SET_BITS    10
 #define DEFAULT_CACHE_LINES 2
 #define DEFAULT_BLOCK_BITS  8
+#define CACHE_BYTES_PER_LINE(B) (B+3*sizeof(int))
+// #define HIGHEST_BIT_ON  (1<<(sizeof(int)*8+1))
 
 
 /*
@@ -106,7 +108,28 @@ void parseOptions(int argc, char *argv[], int *sp, int *Ep, int *bp, char *trace
     }
 }
 
-void simulate(int *cache, int action, unsigned int address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions){
+unsigned int getTag (unsigned int address, int s, int b){
+    unsigned int tag = (address >> (s+b));
+	return tag;
+}
+
+unsigned int getSet (unsigned int address, int s, int b){
+	//s_no * L * (B/4 + 1)
+	int leftm = sizeof(int)*8 - s - b;
+	printf("getSet: s=%d, b=%d, leftm=%d\n", s, b, leftm);
+	unsigned int set = (address << leftm);
+    set >>= (leftm+b);
+	return set;
+}
+
+//int getValid (unsigned int address){
+//  return address >> 31;
+//}
+
+int getSetStart(int s_no, int L, int B){
+	return s_no * L * CACHE_BYTES_PER_LINE(B) / 4;
+}
+void simulate(unsigned int *cache, int action, unsigned int address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions, int s, int E, int b, int verbose){
 	/**
 	 * action = LOAD_ACTION, MODIFY_ACTION, STORE_ACTION.
 	 * address = starting address of the action
@@ -124,26 +147,105 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 	 */
 
 	struct tLine {
-		int flags;	// bit flags -
-					// first bit: valid/invalid
+	  int flags;	// bit flags -
+	  int valid_flag;		// first bit: valid/invalid
 					// unused bits
-					// tag bits		= m - s - b
-					// set bits
+	  int tag;			// tag bits		= m - s - b
+	  int set;     			// set bits
 					// block bits
-		int lruRank;// lowest corresponds to line that was used least recently
+	  int lruRank;                  // lowest corresponds to line that was used least recently
 					// ignoring actual memory bytes - since we are assuming that all request
 					// do not cross block boundary
 	};
-	// do nothing for now
 
-	// FAKE:
-	*pHits += 1;
+        //What happens when Direct Mapped? Do we need to account for different tagging scheme?
+
+	int B  = 1 << b;
+	int tag = getTag(address, s, b);
+	int set = getSet(address, s, b);
+	
+	int i;
+	int isValid;
+	int invalidLine = -1;
+	int lruLine		= -1;
+	unsigned int prevLruRank = -1;
+
+	for (i=0 ; i < E ; i++){
+		if (verbose) printf("\t\tProcessing line %d in set %d\n", i, set);
+		//int offset = set * (E + i + 2) * CACHE_BYTES_PER_LINE(B);
+		int offset = (set * E + i) * CACHE_BYTES_PER_LINE(B);
+		//(set + E + invalidLIne)?? test
+
+		printf("offset: 0x%x\n", offset);
+	  
+		isValid = cache[offset];
+		unsigned int flagInt = cache[offset];
+		unsigned int lru 	= cache[offset + 1];
+		unsigned int cache_tag = cache[offset + 2];
+		//Go through each set in the cache.
+		//if the address matches, return a hit, or an evacuate
+		//else move to next line in set
+		//if end of set return miss.
+
+		printf("flagInt: 0x%x\n", flagInt);
+		printf("lru: 0x%x\n", lru);
+		printf("cache_tag: 0x%x\n", cache_tag);
+
+		if (!isValid){
+			invalidLine = i;
+			if (verbose) printf("\t\tInvalid cache line %d\n", invalidLine);
+			continue;
+		}
+		if (prevLruRank < 0){
+			lruLine = i;
+			prevLruRank = lru;
+		} else {
+			if (lru < prevLruRank){
+				prevLruRank = lru;
+				lruLine = i;
+			}
+		}
+		if (tag == cache_tag){
+			*pHits += 1;
+			printf("\t\tPHits has been incremented\n");
+			if (verbose) printf("0x%x,%d Hit\n", address, bytes);
+			return;
+		}
+	}
+
+	// Need to either find an invalid line or evict one
+	// by now either the invalidLine is set (found an invalid line
+	// or the lru line has been found
+	*pMisses += 1;
+	if (invalidLine < 0){
+		*pEvictions += 1; // there was no invalid line, so the lru has to be evicted
+		invalidLine = lruLine;
+		if (verbose) printf("0x%x,%d Miss Eviction\n", address, bytes);
+	} else {
+		if (verbose) printf("0x%x,%d Miss\n", address, bytes);
+	}
+
+	//??
+	int offset = (set * E + invalidLine) * CACHE_BYTES_PER_LINE(B);
+	cache[offset]     = 1; // set valid tag
+	cache[offset + 2] =  tag; // set cache_tag
+	// set the lru number
+	for (i=0; i < E;i++){
+		int offset2 = (set * E + i) * CACHE_BYTES_PER_LINE(B);
+		printf("Offset2: %d\n", offset2);
+		cache[offset2+1] >>= 1;
+	}
+	unsigned HIGHEST_BIT_ON = (1 <<(sizeof(int)*8-1));
+	cache[offset+1] |= HIGHEST_BIT_ON;
+	// code looks ugly with all the offset - i think we just need a set_start ptr
+
+
 }
 
 int main(int argc, char *argv[])
 {
 	int verbose,s,E,b, S,B;
-	int *cache;
+	unsigned int *cache;
 	char traceFile[BUFSIZ];
 	char traceLine[BUFSIZ];
 	int  intSize = sizeof(int);
@@ -159,13 +261,14 @@ int main(int argc, char *argv[])
 	parseOptions(argc, argv, &s, &E, &b, traceFile, &verbose);
 	S = 0x01 << s;
 	B = 0x01 << b;
-	cache = (int *)malloc( S * E * (B+2) * intSize );
+	cache = (unsigned int *)malloc(S * E * CACHE_BYTES_PER_LINE(B));
 
 	if ((fp = fopen(traceFile, "r")) == NULL){
 		perror ("Error opening trace-file");
 		exit(1);
 	}
 	while (fgets(traceLine,BUFSIZ,fp) != NULL){
+		if (verbose) printf("Parsing line: %s", traceLine);
 		if (traceLine[0] != ' '){
 			if (verbose)
 				printf("Ignoring trace line that does not begin with space: \"%s\"\n", traceLine);
@@ -186,13 +289,13 @@ int main(int argc, char *argv[])
 		memBytes = atoi(lineMemBytes);
 		if (verbose)
 			printf("Processing trace lines: \" %s %d,%d\"\n", lineMemAction, memStart, memBytes);
-		simulate(cache, 0, memStart, memBytes, &hits, &misses, &evictions);
+		simulate(cache, 0, memStart, memBytes, &hits, &misses, &evictions, s, E, b, verbose);
 	}
 	if (verbose){
 		printf("Size of integer = %d bytes\n", intSize);
 	}
 	fclose(fp);
 
-    printSummary(hits, misses, evictions);
+    //printSummary(hits, misses, evictions);
     return 0;
 }

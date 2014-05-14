@@ -20,7 +20,7 @@
 #define DEFAULT_CACHE_LINES 2
 #define DEFAULT_BLOCK_BITS  8
 #define CACHE_BYTES_PER_LINE(B) (B+3*sizeof(int))
-#define HIGHEST_BIT_ON  (1<<(sizeof(int)*8+1))
+// #define HIGHEST_BIT_ON  (1<<(sizeof(int)*8+1))
 
 
 /*
@@ -109,7 +109,8 @@ void parseOptions(int argc, char *argv[], int *sp, int *Ep, int *bp, char *trace
 }
 
 unsigned int getTag (unsigned int address, int s, int b){
-	int tag = address >> (s+b);
+  int tag = address;
+  tag = tag >> (s+b);
 	return tag;
 }
 
@@ -128,7 +129,7 @@ int getValid (unsigned int address){
 int getSetStart(int s_no, int L, int B){
 	return s_no * L * CACHE_BYTES_PER_LINE(B) / 4;
 }
-void simulate(int *cache, int action, unsigned int address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions, int s, int E, int b){
+void simulate(unsigned int *cache, int action, unsigned int address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions, int s, int E, int b){
 	/**
 	 * action = LOAD_ACTION, MODIFY_ACTION, STORE_ACTION.
 	 * address = starting address of the action
@@ -168,10 +169,15 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 	int invalidLine = -1;
 	int lruLine		= -1;
 	unsigned int prevLruRank = -1;
-	unsigned cache_set; //figure out a way to get cache set and tag
+	unsigned cache_set;
 
 	for (i=0 ; i < E ; i++){
-		int offset = (set * E + 1) * CACHE_BYTES_PER_LINE(B); // <== this is not correct fix;
+	  //int offset = set * (E + i + 2) * CACHE_BYTES_PER_LINE(B); 
+	  int offset = (set * E + i) * CACHE_BYTES_PER_LINE(B);
+	  //(set + E + invalidLIne)?? test
+
+	  printf("offset: %d\n", offset);
+	  
 		isValid = cache[offset];
 		unsigned int flagInt = cache[offset];
 		unsigned int lru 	= cache[offset + 1];
@@ -180,6 +186,10 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 		//if the address matches, return a hit, or an evacuate
 		//else move to next line in set
 		//if end of set return miss.
+
+		printf("flagInt: %d\n", flagInt);
+		printf("lru: %d\n", lru);
+		printf("cache_tag: %d\n", cache_tag);
 
 		if (!isValid){
 			invalidLine = i;
@@ -194,9 +204,18 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 				lruLine = i;
 			}
 		}
-		if (set == cache_set && tag == cache_tag){
-			*pHits += 1;
-			return;
+		if (isValid) {
+			if (set == cache_set && tag == cache_tag){
+				*pHits += 1;
+				printf("PHits has been incremented\n");
+				return;
+			} else {
+				continue;
+			}
+		} else {
+			invalidLine = i;
+			printf("Invalid\n");
+			continue;
 		}
 	}
 
@@ -208,12 +227,15 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 		*pEvictions += 1; // there was no invalid line, so the lru has to be evicted
 		invalidLine = lruLine;
 	}
+
+	//??
 	int offset = (set * E + invalidLine) * CACHE_BYTES_PER_LINE(B);
 	cache[offset]     = 1; // set valid tag
 	cache[offset + 2] =  tag; // set cache_tag
 	// set the lru number
 	for (i=0; i < E;i++){
 		int offset2 = (set * E + i) * CACHE_BYTES_PER_LINE(B);
+		printf("Offset2: %d\n", offset2);
 		cache[offset2+1] >>= 1;
 	}
 	cache[offset+1] |= HIGHEST_BIT_ON;
@@ -241,7 +263,7 @@ int main(int argc, char *argv[])
 	parseOptions(argc, argv, &s, &E, &b, traceFile, &verbose);
 	S = 0x01 << s;
 	B = 0x01 << b;
-	cache = (int *)malloc(S * E * CACHE_BYTES_PER_LINE(B));
+	cache = (unsigned int *)malloc(S * E * CACHE_BYTES_PER_LINE(B));
 
 	if ((fp = fopen(traceFile, "r")) == NULL){
 		perror ("Error opening trace-file");
