@@ -176,10 +176,10 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 		int offset = (set * E + i) * CACHE_BYTES_PER_LINE(B);
 		//(set + E + invalidLIne)?? test
 
-		printf("offset: 0x%x\n", offset);
+		//printf("offset: 0x%x\n", offset);
 	  
 		isValid = cache[offset];
-		unsigned int flagInt = cache[offset];
+		//unsigned int flagInt = cache[offset];
 		unsigned int lru 	= cache[offset + 1];
 		unsigned int cache_tag = cache[offset + 2];
 		//Go through each set in the cache.
@@ -187,13 +187,15 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 		//else move to next line in set
 		//if end of set return miss.
 
-		printf("flagInt: 0x%x\n", flagInt);
-		printf("lru: 0x%x\n", lru);
-		printf("cache_tag: 0x%x\n", cache_tag);
+		//printf("flagInt: 0x%x\n", flagInt);
+		//printf("lru: 0x%x\n", lru);
+		//printf("cache_tag: 0x%x\n", cache_tag);
+
+		// if (verbose) printf("0x%x,%d (set=%d,flags=0x%x,tag=0x%x,l", address, bytes);
 
 		if (!isValid){
 			invalidLine = i;
-			if (verbose) printf("\t\tInvalid cache line %d\n", invalidLine);
+			// if (verbose) printf("\t\tInvalid cache line %d\n", invalidLine);
 			continue;
 		}
 		if (prevLruRank < 0){
@@ -207,7 +209,7 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 		}
 		if (tag == cache_tag){
 			*pHits += 1;
-			printf("\t\tPHits has been incremented\n");
+			// printf("\t\tPHits has been incremented\n");
 			if (verbose) printf("0x%x,%d Hit\n", address, bytes);
 			return;
 		}
@@ -232,7 +234,7 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 	// set the lru number
 	for (i=0; i < E;i++){
 		int offset2 = (set * E + i) * CACHE_BYTES_PER_LINE(B);
-		printf("Offset2: %d\n", offset2);
+		//printf("Offset2: %d\n", offset2);
 		cache[offset2+1] >>= 1;
 	}
 	unsigned HIGHEST_BIT_ON = (1 <<(sizeof(int)*8-1));
@@ -248,7 +250,7 @@ int main(int argc, char *argv[])
 	unsigned int *cache;
 	char traceFile[BUFSIZ];
 	char traceLine[BUFSIZ];
-	int  intSize = sizeof(int);
+	//int  intSize = sizeof(int);
 	FILE *fp = NULL;
 	char *lineMemAction;
 	char *lineMemStart;
@@ -268,7 +270,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	while (fgets(traceLine,BUFSIZ,fp) != NULL){
-		if (verbose) printf("Parsing line: %s", traceLine);
+		// if (verbose) printf("Parsing line: %s", traceLine);
 		if (traceLine[0] != ' '){
 			if (verbose)
 				printf("Ignoring trace line that does not begin with space: \"%s\"\n", traceLine);
@@ -291,11 +293,11 @@ int main(int argc, char *argv[])
 			printf("Processing trace lines: \" %s %d,%d\"\n", lineMemAction, memStart, memBytes);
 		simulate(cache, 0, memStart, memBytes, &hits, &misses, &evictions, s, E, b, verbose);
 	}
-	if (verbose){
-		printf("Size of integer = %d bytes\n", intSize);
-	}
+	//if (verbose){
+	//	printf("Size of integer = %d bytes\n", intSize);
+	//}
 	fclose(fp);
 
-    //printSummary(hits, misses, evictions);
+    printSummary(hits, misses, evictions);
     return 0;
 }
