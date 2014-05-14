@@ -19,7 +19,8 @@
 #define DEFAULT_SET_BITS    10
 #define DEFAULT_CACHE_LINES 2
 #define DEFAULT_BLOCK_BITS  8
-#define CACHE_BYTES_PER_LINE (B+3*sizeof(int))
+#define CACHE_BYTES_PER_LINE(B) (B+3*sizeof(int))
+#define HIGHEST_BIT_ON  (1<<(sizeof(int)*8+1))
 
 
 /*
@@ -107,17 +108,17 @@ void parseOptions(int argc, char *argv[], int *sp, int *Ep, int *bp, char *trace
     }
 }
 
-int getTag (unsigned int address, int s, int b){
-  tag = address >>> (s+b);
-  return tag;
+unsigned int getTag (unsigned int address, int s, int b){
+	int tag = address >> (s+b);
+	return tag;
 }
 
-int getSet (unsigned int address, int s, int b){
-  //s_no * L * (B/4 + 1)
-	int leftm = sizeof(int) -s - b;
-	set <<= leftm;
-    set >>>= (leftm+b);
-  return set;
+unsigned int getSet (unsigned int address, int s, int b){
+	//s_no * L * (B/4 + 1)
+	int leftm = sizeof(int) - s - b;
+	unsigned int set = address << leftm;
+    set >>= (leftm+b);
+	return set;
 }
 
 int getValid (unsigned int address){
@@ -125,7 +126,7 @@ int getValid (unsigned int address){
 }
 
 int getSetStart(int s_no, int L, int B){
-	return s_no * L * CACHE_BYTES_PER_LINE / 4;
+	return s_no * L * CACHE_BYTES_PER_LINE(B) / 4;
 }
 void simulate(int *cache, int action, unsigned int address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions, int s, int E, int b){
 	/**
@@ -158,45 +159,74 @@ void simulate(int *cache, int action, unsigned int address, unsigned int bytes, 
 
         //What happens when Direct Mapped? Do we need to account for different tagging scheme?
 
-
+	int B  = 1 << b
 	int tag = getTag(address, s, b);
 	int set = getSet(address, s, b);
 	
+	int i,j,k;
+	int isValid;
+	int invalidLine = -1;
+	int lruLine		= -1;
+	unsigned int prevLruRank = -1;
+	unsigned cache_set; //figure out a way to get cache set and tag
 
-	int i = 0;
-	int cache_set, cache_tag; //figure out a way to get cache set and tag
-	while(i <= E){
-	  if (i == E){
-	    *pMisses += 1;
-	    i += 1;
-	    continue;
-	  }
-	  int offset = set * (E + 1) * CACHE_BYTES_PER_LINE;
-	  int isValid = cache[offset];
-	  int flagInt = cache[offset+1];
-	  int lru     = cache[offset+2];
-	  //Go through each set in the cache.
-	  //if the address matches, return a hit, or an evacuate
-	  //else move to next line in set
-	  //if end of set return miss.
+	for (i=0 ; i < E ; i++){
+		int offset = set * (E + 1) * CACHE_BYTES_PER_LINE(B);  <== this is not correct fix;
+		isValid = cache[offset];
+		unsigned int flagInt = cache[offset];
+		unsigned int lru 	= cache[offset + 1];
+		unsigned int cache_tag = cache[offset + 2];
+		//Go through each set in the cache.
+		//if the address matches, return a hit, or an evacuate
+		//else move to next line in set
+		//if end of set return miss.
 
-	  if (isValid){
-	    if (set == cache_set && tag == cache_tag)
-	      *pHits += 1;
-	  }
-	  i += 1;
+		if (!isValid){
+			invalidLine = i;
+			continue;
+		}
+		if (prevLruRank < 0){
+			lruLine = i;
+			prevLruRank = lru;
+		} else {
+			if (lru < prevLruRank){
+				prevLruRank = lru;
+				lruLine = i;
+			}
+		}
+		if (isValid) {
+			if (set == cache_set && tag == cache_tag){
+				*pHits += 1;
+				return;
+			} else {
+				continue;
+			}
+		} else {
+			invalidLine = i;
+			continue;
+		}
 	}
 
-	if (isValid){}
+	// Need to either find an invalid line or evict one
+	// by now either the invalidLine is set (found an invalid line
+	// or the lru line has been found
+	*pMisses += 1;
+	if (invalidLine < 0){
+		*pEvictions += 1; // there was no invalid line, so the lru has to be evicted
+		invalidLine = lruLine;
+	}
+	int offset = (set * E + invalidLine) * CACHE_BYTES_PER_LINE(B);
+	cache[offset]     = 1; // set valid tag
+	cache[offset + 2] =  tag; // set cache_tag
+	// set the lru number
+	for (i=0; i < E;i++){
+		int offset2 = (set * E + i) * CACHE_BYTES_PER_LINE(B);
+		cache[offset2+1] >>= 1;
+	}
+	cache[offset+1] |= HIGHEST_BIT_ON;
+	// code looks ugly with all the offset - i think we just need a set_start ptr
 
-	//if tag or set not in the cache:
-	   //if getValid(address) = 0;
-             //then *pMisses += 1;
-  	     //lowest lru ranked line, address = address passed in.
-	     //update lruRank;
 
-	//else *pHits += 1;
-       
 }
 
 int main(int argc, char *argv[])
@@ -218,7 +248,7 @@ int main(int argc, char *argv[])
 	parseOptions(argc, argv, &s, &E, &b, traceFile, &verbose);
 	S = 0x01 << s;
 	B = 0x01 << b;
-	cache = (int *)malloc(S * E * CACHE_BYTES_PER_LINE);
+	cache = (int *)malloc(S * E * CACHE_BYTES_PER_LINE(B));
 
 	if ((fp = fopen(traceFile, "r")) == NULL){
 		perror ("Error opening trace-file");

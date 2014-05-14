@@ -108,16 +108,16 @@ void parseOptions(int argc, char *argv[], int *sp, int *Ep, int *bp, char *trace
 }
 
 unsigned int getTag (unsigned int address, int s, int b){
-	int tag 	= address >> (s+b);
+	int tag = address >> (s+b);
 	return tag;
 }
 
 unsigned int getSet (unsigned int address, int s, int b){
-    //s_no * L * (B/4 + 1)
+	//s_no * L * (B/4 + 1)
 	int leftm = sizeof(int) - s - b;
-	unsigned int  set = address << leftm;
+	unsigned int set = address << leftm;
     set >>= (leftm+b);
-    return set;
+	return set;
 }
 
 int getValid (unsigned int address){
