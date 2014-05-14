@@ -21,7 +21,7 @@
 #define DEFAULT_BLOCK_BITS  8
 #define CACHE_BYTES_PER_LINE(B) (B+3*sizeof(int))
 // #define HIGHEST_BIT_ON  (1<<(sizeof(int)*8+1))
-
+#define DEBUG 1
 
 /*
  * usage - Print usage info
@@ -116,7 +116,9 @@ unsigned int getTag (unsigned int address, int s, int b){
 unsigned int getSet (unsigned int address, int s, int b){
 	//s_no * L * (B/4 + 1)
 	int leftm = sizeof(int)*8 - s - b;
-	printf("getSet: s=%d, b=%d, leftm=%d\n", s, b, leftm);
+#if DEBUG
+	printf("\t\tgetSet: s=%d, b=%d, leftm=%d\n", s, b, leftm);
+#endif
 	unsigned int set = (address << leftm);
     set >>= (leftm+b);
 	return set;
@@ -161,14 +163,14 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
         //What happens when Direct Mapped? Do we need to account for different tagging scheme?
 
 	int B  = 1 << b;
-	int tag = getTag(address, s, b);
+	unsigned int tag = getTag(address, s, b);
 	int set = getSet(address, s, b);
 	
 	int i;
 	int isValid;
 	int invalidLine = -1;
 	int lruLine		= -1;
-	unsigned int prevLruRank = -1;
+	unsigned int prevLruRank = 0;
 
 	for (i=0 ; i < E ; i++){
 		if (verbose) printf("\t\tProcessing line %d in set %d\n", i, set);
@@ -187,7 +189,9 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 		//else move to next line in set
 		//if end of set return miss.
 
-		//printf("flagInt: 0x%x\n", flagInt);
+#if DEBUG
+		printf("\t\tline %d: isValid=%d, lru=0x%x, tag=0x%x, looking for tag=0x%x\n", i, isValid, lru, cache_tag, tag);
+#endif
 		//printf("lru: 0x%x\n", lru);
 		//printf("cache_tag: 0x%x\n", cache_tag);
 
@@ -198,7 +202,7 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 			// if (verbose) printf("\t\tInvalid cache line %d\n", invalidLine);
 			continue;
 		}
-		if (prevLruRank < 0){
+		if (prevLruRank == 0){
 			lruLine = i;
 			prevLruRank = lru;
 		} else {
@@ -289,8 +293,9 @@ int main(int argc, char *argv[])
 		}
 		memStart = atoi(lineMemStart);
 		memBytes = atoi(lineMemBytes);
-		if (verbose)
-			printf("Processing trace lines: \" %s %d,%d\"\n", lineMemAction, memStart, memBytes);
+#if DEBUG
+		printf("\t\tProcessing trace lines: \" %s %d,%d\"\n", lineMemAction, memStart, memBytes);
+#endif
 		simulate(cache, 0, memStart, memBytes, &hits, &misses, &evictions, s, E, b, verbose);
 	}
 	//if (verbose){
