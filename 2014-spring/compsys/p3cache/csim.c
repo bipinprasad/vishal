@@ -19,7 +19,8 @@
 #define DEFAULT_SET_BITS    10
 #define DEFAULT_CACHE_LINES 2
 #define DEFAULT_BLOCK_BITS  8
-#define CACHE_BYTES_PER_LINE(B) (B+3*sizeof(int))
+#define CACHE_BYTES_PER_LINE(B) (((B+3)/4+3)*sizeof(int))
+#define CACHE_INTS_PER_LINE(B) (CACHE_BYTES_PER_LINE(B)/4)
 // #define HIGHEST_BIT_ON  (1<<(sizeof(int)*8+1))
 #define DEBUG 1
 
@@ -108,21 +109,36 @@ void parseOptions(int argc, char *argv[], int *sp, int *Ep, int *bp, char *trace
     }
 }
 
-unsigned int getTag (unsigned int address, int s, int b){
-    unsigned int tag = (address >> (s+b));
-	return tag;
+unsigned int getTag (unsigned long address, int s, int b){
+    unsigned long tag = (address >> (s+b));
+	return (unsigned int)tag;
 }
 
-unsigned int getSet (unsigned int address, int s, int b){
+unsigned int getSet (unsigned long address, int s, int b){
 	//s_no * L * (B/4 + 1)
-	int leftm = sizeof(int)*8 - s - b;
+	int leftm = sizeof(int *)*8 - s - b;
 #if DEBUG
 	printf("\t\tgetSet: s=%d, b=%d, leftm=%d\n", s, b, leftm);
 #endif
-	unsigned int set = (address << leftm);
+	unsigned long set = (address << leftm);
     set >>= (leftm+b);
-	return set;
+	return (int)set;
 }
+void updateLrus(unsigned int *pCacheSet, int E, int selectedLine, int intsPerCacheLine){
+	// set the lru number
+	int i;
+	unsigned int *pCacheLine;
+
+	for (i=0; i < E; i++){
+		pCacheLine = pCacheSet + (i * intsPerCacheLine);
+		//printf("Offset2: %d\n", offset2);
+		pCacheLine[1] >>= 1;
+	}
+	pCacheLine = pCacheSet + (selectedLine * intsPerCacheLine);
+	unsigned int HIGHEST_BIT_ON = (1 <<(sizeof(int)*8-1));
+	pCacheLine[1] |= HIGHEST_BIT_ON;
+}
+
 
 //int getValid (unsigned int address){
 //  return address >> 31;
@@ -131,7 +147,7 @@ unsigned int getSet (unsigned int address, int s, int b){
 int getSetStart(int s_no, int L, int B){
 	return s_no * L * CACHE_BYTES_PER_LINE(B) / 4;
 }
-void simulate(unsigned int *cache, int action, unsigned int address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions, int s, int E, int b, int verbose){
+void simulate(unsigned int *cache, char action, unsigned long address, unsigned int bytes, int *pHits, int *pMisses, int *pEvictions, int s, int E, int b, int verbose){
 	/**
 	 * action = LOAD_ACTION, MODIFY_ACTION, STORE_ACTION.
 	 * address = starting address of the action
@@ -167,22 +183,22 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 	int set = getSet(address, s, b);
 	
 	int i;
-	int isValid;
 	int invalidLine = -1;
-	int lruLine		= -1;
+	int lruLine		= 0;
 	unsigned int prevLruRank = 0;
 
+	unsigned int *pCacheSet = cache + (set * E * CACHE_INTS_PER_LINE(B));
 	for (i=0 ; i < E ; i++){
 		if (verbose) printf("\t\tProcessing line %d in set %d\n", i, set);
 		//int offset = set * (E + i + 2) * CACHE_BYTES_PER_LINE(B);
-		int offset = (set * E + i) * CACHE_BYTES_PER_LINE(B);
+		int offset = (set * E + i) * CACHE_INTS_PER_LINE(B);
 		//(set + E + invalidLIne)?? test
 
 		//printf("offset: 0x%x\n", offset);
 	  
-		isValid = cache[offset];
+		unsigned int isValid = cache[offset];
 		//unsigned int flagInt = cache[offset];
-		unsigned int lru 	= cache[offset + 1];
+		unsigned int lruRank 	= cache[offset + 1];
 		unsigned int cache_tag = cache[offset + 2];
 		//Go through each set in the cache.
 		//if the address matches, return a hit, or an evacuate
@@ -190,31 +206,32 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 		//if end of set return miss.
 
 #if DEBUG
-		printf("\t\tline %d: isValid=%d, lru=0x%x, tag=0x%x, looking for tag=0x%x\n", i, isValid, lru, cache_tag, tag);
+		printf("\t\tline %d: set=%d,offset=%d,isValid=0x%x, lruRank=0x%x, cache_tag=0x%x, looking for tag=0x%x\n", i, set, offset, isValid, lruRank, cache_tag, tag);
 #endif
 		//printf("lru: 0x%x\n", lru);
 		//printf("cache_tag: 0x%x\n", cache_tag);
 
 		// if (verbose) printf("0x%x,%d (set=%d,flags=0x%x,tag=0x%x,l", address, bytes);
 
-		if (!isValid){
+		if (isValid == 0){
 			invalidLine = i;
 			// if (verbose) printf("\t\tInvalid cache line %d\n", invalidLine);
 			continue;
 		}
-		if (prevLruRank == 0){
+		if (i == 0
+		||  lruRank <= prevLruRank){
+			prevLruRank = lruRank;
 			lruLine = i;
-			prevLruRank = lru;
-		} else {
-			if (lru < prevLruRank){
-				prevLruRank = lru;
-				lruLine = i;
-			}
 		}
 		if (tag == cache_tag){
 			*pHits += 1;
+			if (action == 'M'){
+				*pHits += 1;
+			}
 			// printf("\t\tPHits has been incremented\n");
-			if (verbose) printf("0x%x,%d Hit\n", address, bytes);
+			if (verbose)
+				printf("0x%lx,%d Hit\n", address, bytes);
+			updateLrus(pCacheSet, E, i, CACHE_INTS_PER_LINE(B));
 			return;
 		}
 	}
@@ -226,23 +243,22 @@ void simulate(unsigned int *cache, int action, unsigned int address, unsigned in
 	if (invalidLine < 0){
 		*pEvictions += 1; // there was no invalid line, so the lru has to be evicted
 		invalidLine = lruLine;
-		if (verbose) printf("0x%x,%d Miss Eviction\n", address, bytes);
+		if (verbose) printf("0x%lx,%d Miss Eviction", address, bytes);
 	} else {
-		if (verbose) printf("0x%x,%d Miss\n", address, bytes);
+		if (verbose) printf("0x%lx,%d Miss", address, bytes);
 	}
 
 	//??
-	int offset = (set * E + invalidLine) * CACHE_BYTES_PER_LINE(B);
+	int offset = (set * E + invalidLine) * CACHE_INTS_PER_LINE(B);
 	cache[offset]     = 1; // set valid tag
 	cache[offset + 2] =  tag; // set cache_tag
-	// set the lru number
-	for (i=0; i < E;i++){
-		int offset2 = (set * E + i) * CACHE_BYTES_PER_LINE(B);
-		//printf("Offset2: %d\n", offset2);
-		cache[offset2+1] >>= 1;
+	updateLrus(pCacheSet, E, invalidLine,CACHE_INTS_PER_LINE(B));
+
+	if (action == 'M'){
+		*pHits += 1;
+		printf(" Hit");
 	}
-	unsigned HIGHEST_BIT_ON = (1 <<(sizeof(int)*8-1));
-	cache[offset+1] |= HIGHEST_BIT_ON;
+	printf("\n");
 	// code looks ugly with all the offset - i think we just need a set_start ptr
 
 
@@ -259,15 +275,23 @@ int main(int argc, char *argv[])
 	char *lineMemAction;
 	char *lineMemStart;
 	char *lineMemBytes;
-	int  memStart;
+	unsigned long  memStart;
 	int  memBytes;
 
 	int hits = 0, misses=0, evictions=0;
+	int i,cacheSizeBytes,cacheSizeInts;
 
 	parseOptions(argc, argv, &s, &E, &b, traceFile, &verbose);
 	S = 0x01 << s;
 	B = 0x01 << b;
-	cache = (unsigned int *)malloc(S * E * CACHE_BYTES_PER_LINE(B));
+	cacheSizeBytes = S * E * CACHE_BYTES_PER_LINE(B);
+	cacheSizeInts = S * E * CACHE_INTS_PER_LINE(B);
+	cache = (unsigned int *)malloc(cacheSizeBytes);
+	// initialize to zeros
+	for (i=0;i<cacheSizeInts;i++){
+		cache[i] = 0;
+	}
+
 
 	if ((fp = fopen(traceFile, "r")) == NULL){
 		perror ("Error opening trace-file");
@@ -277,30 +301,33 @@ int main(int argc, char *argv[])
 		// if (verbose) printf("Parsing line: %s", traceLine);
 		if (traceLine[0] != ' '){
 			if (verbose)
-				printf("Ignoring trace line that does not begin with space: \"%s\"\n", traceLine);
+				printf("\t\tIgnoring trace line that does not begin with space: \"%s\"\n", traceLine);
 			continue;
 		}
 		lineMemAction = lineMemStart = lineMemBytes;
-		lineMemAction	= strtok(traceLine, " ,");
+		lineMemAction = strtok(traceLine, " ,");
 		if (lineMemAction)
 			lineMemStart = strtok(NULL, " ,\n");
 		if (lineMemStart)
 			lineMemBytes = strtok(NULL, " ,\n");
 		if (!lineMemAction || !lineMemStart || !lineMemBytes){
 			if (verbose)
-				printf("Ignoring trace line without all required params: \"%s\"\n", traceLine);
+				printf("\t\tIgnoring trace line without all required params: \"%s\"\n", traceLine);
 			continue;
 		}
-		memStart = atoi(lineMemStart);
-		memBytes = atoi(lineMemBytes);
+		sscanf(lineMemStart, "%lx", &memStart);
+		sscanf(lineMemBytes, "%x", &memBytes);
+		//memStart = atoi(lineMemStart);
+		//memBytes = atoi(lineMemBytes);
 #if DEBUG
-		printf("\t\tProcessing trace lines: \" %s %d,%d\"\n", lineMemAction, memStart, memBytes);
+		printf("\t\tProcessing trace lines: \" %s 0x%lx,%d\"\n", lineMemAction, memStart, memBytes);
 #endif
-		simulate(cache, 0, memStart, memBytes, &hits, &misses, &evictions, s, E, b, verbose);
+		simulate(cache, lineMemAction[0], memStart, memBytes, &hits, &misses, &evictions, s, E, b, verbose);
 	}
-	//if (verbose){
-	//	printf("Size of integer = %d bytes\n", intSize);
-	//}
+#if DEBUG
+	printf("Size of integer = %lu bytes\n", sizeof(int));
+	printf("Size of unsigned = %lu bytes\n", sizeof(unsigned int));
+#endif
 	fclose(fp);
 
     printSummary(hits, misses, evictions);
