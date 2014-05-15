@@ -10,6 +10,34 @@
 #include <stdio.h>
 #include "cachelab.h"
 
+FILE *fpDebug;
+
+void trans32by32(int M, int N, int A[N][M], int B[M][N])
+{
+#define BLOCK_SIZE 8
+    int i, j, k, tmp[BLOCK_SIZE];
+
+    if (!fpDebug){
+    	fpDebug = fopen("debug.txt", "w");
+    }
+
+    fprintf(fpDebug, "In function trans32by32\n");
+    fclose(fpDebug);
+    fpDebug = (FILE *)NULL;
+
+    for (j = 0; j < M; j += BLOCK_SIZE) {
+    	for (i = 0; i < N; i++) {
+        	for (k = 0 ; k < BLOCK_SIZE ; k++){
+        		tmp[k] = A[i][j+k];
+        	}
+        	for (k = 0 ; k < BLOCK_SIZE ; k++){
+        		B[j+k][i] = tmp[k];
+        	}
+        }
+    }
+
+}
+
 int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 
 /*
@@ -22,6 +50,7 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 {
+		trans32by32(M,N,A,B);
 }
 
 /*

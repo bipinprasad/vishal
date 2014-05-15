@@ -214,7 +214,8 @@ void simulate(unsigned int *cache, char action, unsigned long address, unsigned 
 		// if (verbose) printf("0x%x,%d (set=%d,flags=0x%x,tag=0x%x,l", address, bytes);
 
 		if (isValid == 0){
-			invalidLine = i;
+			if (invalidLine < 0)
+				invalidLine = i;
 			// if (verbose) printf("\t\tInvalid cache line %d\n", invalidLine);
 			continue;
 		}
@@ -229,8 +230,13 @@ void simulate(unsigned int *cache, char action, unsigned long address, unsigned 
 				*pHits += 1;
 			}
 			// printf("\t\tPHits has been incremented\n");
-			if (verbose)
-				printf("0x%lx,%d Hit\n", address, bytes);
+			if (verbose){
+				if (action == 'M'){
+					printf("%c 0x%lx,%d Hit Hit\n", action, address, bytes);
+				} else {
+					printf("%c 0x%lx,%d Hit\n", action, address, bytes);
+				}
+			}
 			updateLrus(pCacheSet, E, i, CACHE_INTS_PER_LINE(B));
 			return;
 		}
@@ -243,9 +249,9 @@ void simulate(unsigned int *cache, char action, unsigned long address, unsigned 
 	if (invalidLine < 0){
 		*pEvictions += 1; // there was no invalid line, so the lru has to be evicted
 		invalidLine = lruLine;
-		if (verbose) printf("0x%lx,%d Miss Eviction", address, bytes);
+		if (verbose) printf("%c 0x%lx,%d Miss Eviction", action, address, bytes);
 	} else {
-		if (verbose) printf("0x%lx,%d Miss", address, bytes);
+		if (verbose) printf("%c 0x%lx,%d Miss", action, address, bytes);
 	}
 
 	//??
