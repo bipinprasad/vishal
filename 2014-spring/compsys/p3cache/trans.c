@@ -10,36 +10,90 @@
 #include <stdio.h>
 #include "cachelab.h"
 
-FILE *fpDebug;
+int is_transpose(int M, int N, int A[N][M], int B[M][N]);
+void trans(int M, int N, int A[N][M], int B[M][N]); 
+void trans_32_by_32 (int M, int N, int A[N][M], int B[M][N]);
+void trans_32_by_32_offset (int M, int N, int A[N][M], int B[M][N], 
+	int a_start_row, int a_start_col, 
+	int nRows, int nCols,
+	int b_start_row, int b_start_col,
+	int b_final_row, int b_final_col);
 
-void trans32by32(int M, int N, int A[N][M], int B[M][N])
-{
-#define BLOCK_SIZE 8
-    int i, j, k, tmp[BLOCK_SIZE];
-
-    if (!fpDebug){
-    	fpDebug = fopen("debug.txt", "w");
-    }
-
-    fprintf(fpDebug, "In function trans32by32\n");
-    fclose(fpDebug);
-    fpDebug = (FILE *)NULL;
-
-    for (j = 0; j < M; j += BLOCK_SIZE) {
-    	for (i = 0; i < N; i++) {
-        	for (k = 0 ; k < BLOCK_SIZE ; k++){
-        		tmp[k] = A[i][j+k];
-        	}
-        	for (k = 0 ; k < BLOCK_SIZE ; k++){
-        		B[j+k][i] = tmp[k];
-        	}
-        }
-    }
-
+void trans_61_by_67 (int M, int N, int A[N][M], int B[M][N]){
+	trans_32_by_32_offset (M, N, A, B,  0,  0, 32, 30, 0, 0, 0, 0); 
+	trans_32_by_32_offset (M, N, A, B,  0, 30, 32, 31, 30, 0, 30, 0); 
+	trans_32_by_32_offset (M, N, A, B, 32,  0, 35, 30, 0, 32, 0, 32); 
+	trans_32_by_32_offset (M, N, A, B, 32, 30, 35, 31, 30, 32, 30, 32); // 2086 misses
+	return;
+	trans_32_by_32_offset (M, N, A, B,  0, 0, 30, 61, 0, 0, 0, 0); 
+	trans_32_by_32_offset (M, N, A, B, 30, 0, 37, 61, 0, 30, 0, 30); // 2090 misses
+	return;
+	trans_32_by_32_offset (M, N, A, B, 0, 0, 67, 61, 0, 0, 0, 0); // 2162 misses
+	return;
+	int i,j;
+	for (i=0; i<8; i++){
+		for (j=0;j<4;j++){
+			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8);
+		}
+	}
+	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32);
+	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0);
+}
+void trans_64_by_64 (int M, int N, int A[N][M], int B[M][N]){
+	int i,j;
+	for (i=0; i<8; i++){
+		for (j=0;j<4;j++){
+			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8);
+		}
+	}
+	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32);
+	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0);
+}
+void trans_32_by_64 (int M, int N, int A[N][M], int B[M][N]){
+	int i,j;
+	for (i=0; i<8; i++){
+		for (j=0;j<2;j++){
+			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8);
+		}
+	}
+	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32);
+	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0);
 }
 
-int is_transpose(int M, int N, int A[N][M], int B[M][N]);
-
+void trans_32_by_32_offset (int M, int N, int A[N][M], int B[M][N], 
+	int a_start_row, int a_start_col, 
+	int nRows, int nCols,
+	int b_start_row, int b_start_col,
+	int b_final_row, int b_final_col
+){
+#define BLOCK_SIZE2 4
+    int i, j, k;
+    int tmp2[BLOCK_SIZE2];
+    for (j = 0; j < nCols; j += BLOCK_SIZE2) {
+    	for (i = 0; i < nRows; i++) {
+            for (k=0; k<BLOCK_SIZE2 && (j+k)<nCols ; k++){
+                tmp2[k] = A[a_start_row+i][a_start_col+j+k];
+            }
+            for (k=0; k<BLOCK_SIZE2 && (j+k)<nCols ; k++){
+                B[b_start_row+j+k][b_start_col+i] = tmp2[k];
+            }
+		}
+	}
+	return;
+	// Now copy the B matrix ovcr to the offset
+	if (b_start_row != b_final_row || b_start_col != b_final_col){
+	   	for (j = 0; j < nRows; j += BLOCK_SIZE2) {
+    		for (i = 0; i < nCols; i++) {
+            	for (k=0; k<BLOCK_SIZE2 && (j+k)<nRows ; k++){
+                	tmp2[k] = B[b_start_row+i][b_start_col+j+k];
+            	}
+            	for (k=0; k<BLOCK_SIZE2 && (j+k)<nRows ; k++){
+                	B[b_final_row+i][b_final_col+j+k] = tmp2[k];
+            	}
+        	}
+		}
+    }
+}
 /*
  * transpose_submit - This is the solution transpose function that you
  *     will be graded on for Part B of the assignment. Do not change
@@ -50,13 +104,84 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 {
-		trans32by32(M,N,A,B);
+	if (M == 32 && N == 32){
+		trans_32_by_32(M,N,A,B);
+	}	//transpose_by_blocks(*A, *B, N, M, 8);
+	else if (M == 32 && N == 64){
+		trans_32_by_64(M,N,A,B);
+	}
+	else if (M == 64 && N == 64){
+		trans_64_by_64(M,N,A,B);
+	}
+	else if (M == 61 && N == 67){
+		trans_61_by_67 (M,N,A,B);
+	}
 }
 
 /*
  * You can define additional transpose functions below. We've defined
  * a simple one below to help you get started.
  */
+
+void transpose_by_blocks(int *A, int *B, int N, int M, int block_size){
+	int row, col, i, j, iMax, jMax;
+
+	for (row=0; row<N; row += block_size){
+		iMax = row + block_size;
+		for (col=0; col<M; col += block_size){
+			jMax = col+block_size;
+            for (i=row; i<iMax && i<N; i++){
+                for (j=col; j<jMax && j<M; j++){
+                    B[j*N+i] = A[i*M+j];
+                }
+            }
+         }
+	}
+}
+
+char trans_32_by_32_desc[] = "32x32 Transpose Algorithm";
+void trans_32_by_32 (int M, int N, int A[N][M], int B[M][N]){
+#define BLOCK_SIZE 8
+    int i, j, k;
+	int tmp2[BLOCK_SIZE];
+    for (j = 0; j < M; j += BLOCK_SIZE) {
+    	for (i = 0; i < N; i++) {  
+			for (k=0; k<BLOCK_SIZE && (j+k)<M ; k++){
+				tmp2[k] = A[i][j+k];
+			}
+			for (k=0; k<BLOCK_SIZE && (j+k)<M ; k++){
+				B[j+k][i] = tmp2[k];
+			}
+/*
+            tmp = A[i][j];
+            B[j][i] = tmp;
+
+	    tmp = A[i][j+1];
+	    B[j+1][i] = tmp;
+	
+	    tmp = A[i][j+2];
+	    B[j+2][i] = tmp;
+ 		
+            tmp = A[i][j+3];
+	    B[j+3][i] = tmp;
+
+            tmp = A[i][j+4];
+	    B[j+4][i] = tmp;
+
+	    tmp = A[i][j+5];
+	    B[j+5][i] = tmp;
+
+            tmp = A[i][j+6];
+	    B[j+6][i] = tmp;
+
+            tmp = A[i][j+7];
+	    B[j+7][i] = tmp;
+
+*/
+        }
+    }
+
+}
 
 /*
  * trans - A simple baseline transpose function, not optimized for the cache.
