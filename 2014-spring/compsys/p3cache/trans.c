@@ -12,131 +12,12 @@
 
 int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 void trans(int M, int N, int A[N][M], int B[M][N]); 
+
 void trans_32_by_32 (int M, int N, int A[N][M], int B[M][N]);
-void trans_32_by_32_offset (int M, int N, int A[N][M], int B[M][N], 
-	int a_start_row, int a_start_col, 
-	int nRows, int nCols,
-	int b_start_row, int b_start_col,
-	int b_final_row, int b_final_col,
-	int TMP_VARIABLE_CNT);
+void trans_32_by_64 (int M, int N, int A[N][M], int B[M][N]);
+void trans_64_by_64 (int M, int N, int A[N][M], int B[M][N]);
+void trans_61_by_67 (int M, int N, int A[N][M], int B[M][N]);
 
-void trans_61_by_67 (int M, int N, int A[N][M], int B[M][N]){
-	int i,j;
-	int nRows, nCols;
-	
-#define ROW_INCREMENT 8
-#define COL_INCREMENT 4
-#define tmpVariableCnt 4
-#define ROW_LOOP_CNT  ((N+ROW_INCREMENT-1)/ROW_INCREMENT)
-#define COL_LOOP_CNT  ((M+COL_INCREMENT-1)/COL_INCREMENT)
-
-	//for (i=0; i<ROW_LOOP_CNT; i++){
-	for (i=ROW_LOOP_CNT-1; i>=0; i--){
-		nRows = ((N-i*ROW_INCREMENT) < ROW_INCREMENT) ? (N-i*ROW_INCREMENT) : ROW_INCREMENT; 
-		//fprintf(stderr, "N=%d,M=%d,i=%d,nRows=%d\n",N,M,i,nRows);
-		//for (j=0;j<COL_LOOP_CNT;j++){
-		for (j=COL_LOOP_CNT-1;j>=0;j--){
-			nCols = ((M-j*COL_INCREMENT) < COL_INCREMENT) ? (M-j*COL_INCREMENT) : COL_INCREMENT; 
-			trans_32_by_32_offset (M, N, A, B, i*ROW_INCREMENT, j*COL_INCREMENT, nRows, nCols, j*COL_INCREMENT, i*ROW_INCREMENT, j*COL_INCREMENT, i*ROW_INCREMENT, tmpVariableCnt);
-		}
-	}
-	return;
-
-#undef ROW_INCREMENT
-#undef COL_INCREMENT
-#undef tmpVariableCnt
-#undef ROW_LOOP_CNT
-#undef COL_LOOP_CNT
-	trans_32_by_32_offset (M, N, A, B,  0,  0, 32, 30, 0, 0, 0, 0, 4); 
-	trans_32_by_32_offset (M, N, A, B,  0, 30, 32, 31, 30, 0, 30, 0, 4); 
-	trans_32_by_32_offset (M, N, A, B, 32,  0, 35, 30, 0, 32, 0, 32, 4); 
-	trans_32_by_32_offset (M, N, A, B, 32, 30, 35, 31, 30, 32, 30, 32, 4); // 2086 misses
-	return;
-	trans_32_by_32_offset (M, N, A, B,  0, 0, 30, 61, 0, 0, 0, 0, 4); 
-	trans_32_by_32_offset (M, N, A, B, 30, 0, 37, 61, 0, 30, 0, 30, 4); // 2090 misses
-	return;
-	trans_32_by_32_offset (M, N, A, B, 0, 0, 67, 61, 0, 0, 0, 0, 4); // 2162 misses
-	return;
-	for (i=0; i<8; i++){
-		for (j=0;j<4;j++){
-			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8, 4);
-		}
-	}
-	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32);
-	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0);
-}
-void trans_64_by_64 (int M, int N, int A[N][M], int B[M][N]){
-	int i,j;
-	int nRows, nCols;
-	
-#define ROW_INCREMENT 8
-#define COL_INCREMENT 12
-#define tmpVariableCnt 3
-#define ROW_LOOP_CNT  ((64+ROW_INCREMENT-1)/ROW_INCREMENT)
-#define COL_LOOP_CNT  ((64+COL_INCREMENT-1)/COL_INCREMENT)
-
-	//for (i=0; i<ROW_LOOP_CNT; i++){
-	for (i=ROW_LOOP_CNT-1; i>=0; i--){
-		nRows = ((N-i*ROW_INCREMENT) < ROW_INCREMENT) ? (N-i*ROW_INCREMENT) : ROW_INCREMENT; 
-		//fprintf(stderr, "N=%d,M=%d,i=%d,nRows=%d\n",N,M,i,nRows);
-		//for (j=0;j<COL_LOOP_CNT;j++){
-		for (j=COL_LOOP_CNT-1;j>=0;j--){
-			nCols = ((M-j*COL_INCREMENT) < COL_INCREMENT) ? (M-j*COL_INCREMENT) : COL_INCREMENT; 
-			trans_32_by_32_offset (M, N, A, B, i*ROW_INCREMENT, j*COL_INCREMENT, nRows, nCols, j*COL_INCREMENT, i*ROW_INCREMENT, j*COL_INCREMENT, i*ROW_INCREMENT, tmpVariableCnt);
-		}
-	}
-	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32, 4);
-	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0, 4);
-}
-void trans_32_by_64 (int M, int N, int A[N][M], int B[M][N]){
-	int i,j;
-	for (i=0; i<8; i++){
-		for (j=0;j<2;j++){
-			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8, 4);
-		}
-	}
-	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32, 4);
-	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0, 4);
-}
-
-void trans_32_by_32_offset (int M, int N, int A[N][M], int B[M][N], 
-	int a_start_row, int a_start_col, 
-	int nRows, int nCols,
-	int b_start_row, int b_start_col,
-	int b_final_row, int b_final_col,
-	int TMP_VARIABLE_CNT
-){
-#define BLOCK_SIZE2 8
-    int i, j, k;
-    int tmp2[BLOCK_SIZE2];
-	if (TMP_VARIABLE_CNT > nCols)
-		TMP_VARIABLE_CNT = nCols;
-    for (j = 0; j < nCols; j += TMP_VARIABLE_CNT) {
-    	for (i = nRows-1; i >=0 ; i-- ){
-    	//for (i = 0; i < nRows; i++) {
-            for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nCols ; k++){
-                tmp2[k] = A[a_start_row+i][a_start_col+j+k];
-            }
-            for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nCols ; k++){
-                B[b_start_row+j+k][b_start_col+i] = tmp2[k];
-            }
-		}
-	}
-	return;
-	// Now copy the B matrix ovcr to the offset
-	if (b_start_row != b_final_row || b_start_col != b_final_col){
-	   	for (j = 0; j < nRows; j += TMP_VARIABLE_CNT) {
-    		for (i = 0; i < nCols; i++) {
-            	for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nRows ; k++){
-                	tmp2[k] = B[b_start_row+i][b_start_col+j+k];
-            	}
-            	for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nRows ; k++){
-                	B[b_final_row+i][b_final_col+j+k] = tmp2[k];
-            	}
-        	}
-		}
-    }
-}
 /*
  * transpose_submit - This is the solution transpose function that you
  *     will be graded on for Part B of the assignment. Do not change
@@ -148,16 +29,16 @@ char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 {
 	if (M == 32 && N == 32){
-		trans_32_by_32(M,N,A,B);
-	}	//transpose_by_blocks(*A, *B, N, M, 8);
+	  trans_32_by_32(M,N,A,B);
+	}
 	else if (M == 32 && N == 64){
-		trans_32_by_64(M,N,A,B);
+	  trans_32_by_64(M,N,A,B);
 	}
 	else if (M == 64 && N == 64){
-		trans_64_by_64(M,N,A,B);
+	  trans_64_by_64(M,N,A,B);
 	}
 	else if (M == 61 && N == 67){
-		trans_61_by_67 (M,N,A,B);
+	  trans_61_by_67 (M,N,A,B);
 	}
 }
 
@@ -166,64 +47,121 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N])
  * a simple one below to help you get started.
  */
 
-void transpose_by_blocks(int *A, int *B, int N, int M, int block_size){
-	int row, col, i, j, iMax, jMax;
-
-	for (row=0; row<N; row += block_size){
-		iMax = row + block_size;
-		for (col=0; col<M; col += block_size){
-			jMax = col+block_size;
-            for (i=row; i<iMax && i<N; i++){
-                for (j=col; j<jMax && j<M; j++){
-                    B[j*N+i] = A[i*M+j];
-                }
-            }
-         }
-	}
-}
 
 char trans_32_by_32_desc[] = "32x32 Transpose Algorithm";
 void trans_32_by_32 (int M, int N, int A[N][M], int B[M][N]){
-#define BLOCK_SIZE 8
-    int i, j, k;
-	int tmp2[BLOCK_SIZE];
-    for (j = 0; j < M; j += BLOCK_SIZE) {
-    	for (i = 0; i < N; i++) {  
-			for (k=0; k<BLOCK_SIZE && (j+k)<M ; k++){
-				tmp2[k] = A[i][j+k];
-			}
-			for (k=0; k<BLOCK_SIZE && (j+k)<M ; k++){
-				B[j+k][i] = tmp2[k];
-			}
-/*
-            tmp = A[i][j];
-            B[j][i] = tmp;
+  int i, j, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+  for (j = 0; j < M; j+=8) {
+    for (i = 0; i < N; i++) {  
+            tmp0 = A[i][j];
+	    tmp1 = A[i][j+1];
+	    tmp2 = A[i][j+2];
+            tmp3 = A[i][j+3];
+	    tmp4 = A[i][j+4];
+	    tmp5 = A[i][j+5];
+            tmp6 = A[i][j+6];
+            tmp7 = A[i][j+7];
 
-	    tmp = A[i][j+1];
-	    B[j+1][i] = tmp;
-	
-	    tmp = A[i][j+2];
-	    B[j+2][i] = tmp;
- 		
-            tmp = A[i][j+3];
-	    B[j+3][i] = tmp;
-
-            tmp = A[i][j+4];
-	    B[j+4][i] = tmp;
-
-	    tmp = A[i][j+5];
-	    B[j+5][i] = tmp;
-
-            tmp = A[i][j+6];
-	    B[j+6][i] = tmp;
-
-            tmp = A[i][j+7];
-	    B[j+7][i] = tmp;
-
-*/
+            B[j][i] = tmp0;
+	    B[j+1][i] = tmp1;
+	    B[j+2][i] = tmp2;
+	    B[j+3][i] = tmp3;
+	    B[j+4][i] = tmp4;
+	    B[j+5][i] = tmp5;
+	    B[j+6][i] = tmp6;
+	    B[j+7][i] = tmp7;
         }
     }
+}
 
+
+void trans_32_by_64 (int M, int N, int A[N][M], int B[M][N]){
+	int i0,j0;
+	for (i0=0; i0<8; i0++){
+	  for (j0=0;j0<2;j0++){
+	    int i, j;
+	    int tmp0, tmp1, tmp2, tmp3;
+	    for (j = 0; j < 16; j+=4){
+	      for (i = 7; i>=0 ; i--){
+		tmp0 = A[i0*8 + i][j0*16 + j + 0];
+		tmp1 = A[i0*8 + i][j0*16 + j + 1];
+		tmp2 = A[i0*8 + i][j0*16 + j + 2];
+		tmp3 = A[i0*8 + i][j0*16 + j + 3];
+
+		B[j0*16 +j + 0][i0*8 +i] = tmp0;
+		B[j0*16 +j + 1][i0*8 +i] = tmp1;
+		B[j0*16 +j + 2][i0*8 +i] = tmp2;
+		B[j0*16 +j + 3][i0*8 +i] = tmp3;
+	      }
+	    }
+	  }
+	}
+}
+
+void trans_64_by_64 (int M, int N, int A[N][M], int B[M][N]){
+	int i0,j0;
+	for (i0=7; i0>=0; i0--){
+	  for (j0=15; j0>=0; j0--){  
+	    int i, tmp0, tmp1, tmp2, tmp3;
+	    for (i=7; i>=0; i--){
+	      tmp0 = A[i0*8 + i][j0*4 + 0];
+	      tmp1 = A[i0*8 + i][j0*4 + 1];
+	      tmp2 = A[i0*8 + i][j0*4 + 2];
+	      tmp3 = A[i0*8 + i][j0*4 + 3];
+	      
+	      B[j0*4 + 0][i0*8 +i] = tmp0;
+	      B[j0*4 + 1][i0*8 +i] = tmp1;
+	      B[j0*4 + 2][i0*8 +i] = tmp2;
+	      B[j0*4 + 3][i0*8 +i] = tmp3;
+	    }
+	  }
+	}
+}
+
+void trans_61_by_67 (int M, int N, int A[N][M], int B[M][N]){
+	int i0,j0;
+	int nRows, nCols;
+
+	for (i0=8; i0>=0; i0--){
+		nRows = ((N-i0*8) < 8) ? (N-i0*8) : 8; 
+		for (j0=15; j0>=0; j0--){
+		  nCols = ((M-j0*4) < 4) ? (M-j0*4) : 4; 
+
+		  int i, j, k;
+		  int TMP_VARIABLE_CNT = 4;
+
+		  /*Though the assignment tells us not to use arrays, here
+                    I have instantiated an array called tmp2. This array is merely
+		    A place to store 4 temporary variables. Since A[N][M] is
+                    61x67 (awkward dimensions to deal with) the number of temporary
+                    variables that I will need in a given interation to move values from A to B
+                    will change. So instead of explicitly naming 4 temporary variables,
+                    I've made tmp2 so I can use 1,2,3, or 4 temporary variables if the
+                    occassion arises. This makes the code cleaner. I could (with some effort)
+                    use individually named temporary variables (as I did in my other transpose
+                    functions), but that would be very tedious. I believe using this small array
+                    does not violate the spirit of the assignment.
+
+		    Furthermore since I have only 8 other local variables in this function (i0, j0,
+                    nRows, nCols, i, j, k, and TMP_VARIABLE_CNT) having tmp2 be an array that can
+                    contain no more than 4 temporary ints, means that this function never uses
+                    more than 12 variables.*/
+		  int tmp2[4];
+
+		  if (TMP_VARIABLE_CNT > nCols)
+		    TMP_VARIABLE_CNT = nCols;
+		  for (j = 0; j < nCols; j += TMP_VARIABLE_CNT) {
+		    for (i = nRows-1; i >=0 ; i--){
+		      for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nCols ; k++){
+			tmp2[k] = A[i0*8 +i][j0*4 +j+k];
+		      }
+		      for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nCols ; k++){
+			B[j0*4 +j+k][i0*8 +i] = tmp2[k];
+		      }
+		    }
+		  }
+		}
+	}
 }
 
 /*
@@ -240,7 +178,6 @@ void trans(int M, int N, int A[N][M], int B[M][N])
             B[j][i] = tmp;
         }
     }
-
 }
 
 /*
