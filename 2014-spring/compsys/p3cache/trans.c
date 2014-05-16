@@ -17,23 +17,49 @@ void trans_32_by_32_offset (int M, int N, int A[N][M], int B[M][N],
 	int a_start_row, int a_start_col, 
 	int nRows, int nCols,
 	int b_start_row, int b_start_col,
-	int b_final_row, int b_final_col);
+	int b_final_row, int b_final_col,
+	int TMP_VARIABLE_CNT);
 
 void trans_61_by_67 (int M, int N, int A[N][M], int B[M][N]){
-	trans_32_by_32_offset (M, N, A, B,  0,  0, 32, 30, 0, 0, 0, 0); 
-	trans_32_by_32_offset (M, N, A, B,  0, 30, 32, 31, 30, 0, 30, 0); 
-	trans_32_by_32_offset (M, N, A, B, 32,  0, 35, 30, 0, 32, 0, 32); 
-	trans_32_by_32_offset (M, N, A, B, 32, 30, 35, 31, 30, 32, 30, 32); // 2086 misses
-	return;
-	trans_32_by_32_offset (M, N, A, B,  0, 0, 30, 61, 0, 0, 0, 0); 
-	trans_32_by_32_offset (M, N, A, B, 30, 0, 37, 61, 0, 30, 0, 30); // 2090 misses
-	return;
-	trans_32_by_32_offset (M, N, A, B, 0, 0, 67, 61, 0, 0, 0, 0); // 2162 misses
-	return;
 	int i,j;
+	int nRows, nCols;
+	
+#define ROW_INCREMENT 8
+#define COL_INCREMENT 4
+#define tmpVariableCnt 4
+#define ROW_LOOP_CNT  ((N+ROW_INCREMENT-1)/ROW_INCREMENT)
+#define COL_LOOP_CNT  ((M+COL_INCREMENT-1)/COL_INCREMENT)
+
+	//for (i=0; i<ROW_LOOP_CNT; i++){
+	for (i=ROW_LOOP_CNT-1; i>=0; i--){
+		nRows = ((N-i*ROW_INCREMENT) < ROW_INCREMENT) ? (N-i*ROW_INCREMENT) : ROW_INCREMENT; 
+		//fprintf(stderr, "N=%d,M=%d,i=%d,nRows=%d\n",N,M,i,nRows);
+		//for (j=0;j<COL_LOOP_CNT;j++){
+		for (j=COL_LOOP_CNT-1;j>=0;j--){
+			nCols = ((M-j*COL_INCREMENT) < COL_INCREMENT) ? (M-j*COL_INCREMENT) : COL_INCREMENT; 
+			trans_32_by_32_offset (M, N, A, B, i*ROW_INCREMENT, j*COL_INCREMENT, nRows, nCols, j*COL_INCREMENT, i*ROW_INCREMENT, j*COL_INCREMENT, i*ROW_INCREMENT, tmpVariableCnt);
+		}
+	}
+	return;
+
+#undef ROW_INCREMENT
+#undef COL_INCREMENT
+#undef tmpVariableCnt
+#undef ROW_LOOP_CNT
+#undef COL_LOOP_CNT
+	trans_32_by_32_offset (M, N, A, B,  0,  0, 32, 30, 0, 0, 0, 0, 4); 
+	trans_32_by_32_offset (M, N, A, B,  0, 30, 32, 31, 30, 0, 30, 0, 4); 
+	trans_32_by_32_offset (M, N, A, B, 32,  0, 35, 30, 0, 32, 0, 32, 4); 
+	trans_32_by_32_offset (M, N, A, B, 32, 30, 35, 31, 30, 32, 30, 32, 4); // 2086 misses
+	return;
+	trans_32_by_32_offset (M, N, A, B,  0, 0, 30, 61, 0, 0, 0, 0, 4); 
+	trans_32_by_32_offset (M, N, A, B, 30, 0, 37, 61, 0, 30, 0, 30, 4); // 2090 misses
+	return;
+	trans_32_by_32_offset (M, N, A, B, 0, 0, 67, 61, 0, 0, 0, 0, 4); // 2162 misses
+	return;
 	for (i=0; i<8; i++){
 		for (j=0;j<4;j++){
-			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8);
+			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8, 4);
 		}
 	}
 	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32);
@@ -41,40 +67,57 @@ void trans_61_by_67 (int M, int N, int A[N][M], int B[M][N]){
 }
 void trans_64_by_64 (int M, int N, int A[N][M], int B[M][N]){
 	int i,j;
-	for (i=0; i<8; i++){
-		for (j=0;j<4;j++){
-			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8);
+	int nRows, nCols;
+	
+#define ROW_INCREMENT 8
+#define COL_INCREMENT 12
+#define tmpVariableCnt 3
+#define ROW_LOOP_CNT  ((64+ROW_INCREMENT-1)/ROW_INCREMENT)
+#define COL_LOOP_CNT  ((64+COL_INCREMENT-1)/COL_INCREMENT)
+
+	//for (i=0; i<ROW_LOOP_CNT; i++){
+	for (i=ROW_LOOP_CNT-1; i>=0; i--){
+		nRows = ((N-i*ROW_INCREMENT) < ROW_INCREMENT) ? (N-i*ROW_INCREMENT) : ROW_INCREMENT; 
+		//fprintf(stderr, "N=%d,M=%d,i=%d,nRows=%d\n",N,M,i,nRows);
+		//for (j=0;j<COL_LOOP_CNT;j++){
+		for (j=COL_LOOP_CNT-1;j>=0;j--){
+			nCols = ((M-j*COL_INCREMENT) < COL_INCREMENT) ? (M-j*COL_INCREMENT) : COL_INCREMENT; 
+			trans_32_by_32_offset (M, N, A, B, i*ROW_INCREMENT, j*COL_INCREMENT, nRows, nCols, j*COL_INCREMENT, i*ROW_INCREMENT, j*COL_INCREMENT, i*ROW_INCREMENT, tmpVariableCnt);
 		}
 	}
-	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32);
-	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0);
+	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32, 4);
+	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0, 4);
 }
 void trans_32_by_64 (int M, int N, int A[N][M], int B[M][N]){
 	int i,j;
 	for (i=0; i<8; i++){
 		for (j=0;j<2;j++){
-			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8);
+			trans_32_by_32_offset (M, N, A, B, i*8, j*16, 8, 16, j*16, i*8, j*16, i*8, 4);
 		}
 	}
-	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32);
-	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0);
+	//trans_32_by_32_offset (M, N, A, B, 32, 0, 32, 32, 0, 32, 0, 32, 4);
+	//trans_32_by_32_offset (M, N, A, B,  0, 0, 32, 32, 0,  0, 0,  0, 4);
 }
 
 void trans_32_by_32_offset (int M, int N, int A[N][M], int B[M][N], 
 	int a_start_row, int a_start_col, 
 	int nRows, int nCols,
 	int b_start_row, int b_start_col,
-	int b_final_row, int b_final_col
+	int b_final_row, int b_final_col,
+	int TMP_VARIABLE_CNT
 ){
-#define BLOCK_SIZE2 4
+#define BLOCK_SIZE2 8
     int i, j, k;
     int tmp2[BLOCK_SIZE2];
-    for (j = 0; j < nCols; j += BLOCK_SIZE2) {
-    	for (i = 0; i < nRows; i++) {
-            for (k=0; k<BLOCK_SIZE2 && (j+k)<nCols ; k++){
+	if (TMP_VARIABLE_CNT > nCols)
+		TMP_VARIABLE_CNT = nCols;
+    for (j = 0; j < nCols; j += TMP_VARIABLE_CNT) {
+    	for (i = nRows-1; i >=0 ; i-- ){
+    	//for (i = 0; i < nRows; i++) {
+            for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nCols ; k++){
                 tmp2[k] = A[a_start_row+i][a_start_col+j+k];
             }
-            for (k=0; k<BLOCK_SIZE2 && (j+k)<nCols ; k++){
+            for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nCols ; k++){
                 B[b_start_row+j+k][b_start_col+i] = tmp2[k];
             }
 		}
@@ -82,12 +125,12 @@ void trans_32_by_32_offset (int M, int N, int A[N][M], int B[M][N],
 	return;
 	// Now copy the B matrix ovcr to the offset
 	if (b_start_row != b_final_row || b_start_col != b_final_col){
-	   	for (j = 0; j < nRows; j += BLOCK_SIZE2) {
+	   	for (j = 0; j < nRows; j += TMP_VARIABLE_CNT) {
     		for (i = 0; i < nCols; i++) {
-            	for (k=0; k<BLOCK_SIZE2 && (j+k)<nRows ; k++){
+            	for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nRows ; k++){
                 	tmp2[k] = B[b_start_row+i][b_start_col+j+k];
             	}
-            	for (k=0; k<BLOCK_SIZE2 && (j+k)<nRows ; k++){
+            	for (k=0; k<TMP_VARIABLE_CNT && (j+k)<nRows ; k++){
                 	B[b_final_row+i][b_final_col+j+k] = tmp2[k];
             	}
         	}
